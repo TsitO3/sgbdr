@@ -1,8 +1,8 @@
 import sys
-#from src import db_core 
+from db_core import db_core 
 
 
-DB_NAME = "MiniDB"
+DB_NAME = "realSQL"
 
 def parse_command(command: str) -> tuple[str, list[str]]:
     if not command:
@@ -24,24 +24,42 @@ def execute_command(action: str, args: list[str]) -> bool:
     
     if action == "HELP":
         help_message = (
-            "Commandes disponibles :\n"
-            "  QUIT .................... Quitte l'application.\n"
-            "  HELP .................... Affiche cette aide.\n"
-            "  SHOW TABLES ............. Liste toutes les tables.\n"
-            "  CREATE TABLE <nom> <champs> Créer une nouvelle table (ex: id:int name:str).\n"
-            "  INSERT INTO <table_nom> <valeurs> Insère une ligne dans la table.\n"
-            "  SELECT * FROM <table_nom> .. Affiche toutes les données de la table."
+           "Commandes disponibles :\n"
+            " \n"
+            "    QUIT or EXIT............. Quitte l'application.\n"
+            "    HELP .................... Affiche cette aide.\n"
+            " \n"
+            "    SHOW DATABASES .......... Liste toutes les bases de données.\n"
+            "    CREATE DATABASE <nom> ... Crée un nouveau dossier de base de données.\n"
+            "    USE <db_name> ........... Sélectionne la base de données active.\n"
+            " \n"
+            "    SHOW TABLES ............. Liste toutes les tables de la DB active.\n"
+            "    CREATE TABLE <nom> <champs> Crée une nouvelle table (ex: id:int:pk name:str).\n"
+            "    INSERT INTO <table_nom> <valeurs> Insère une ligne dans la table.\n"
+            "    SELECT * FROM <table_nom> .. Affiche toutes les données de la table.\n"
+            "    UPDATE <nom> SET <col> = <val> WHERE <cond> Modifie des lignes.\n"
+            "    DELETE FROM <nom> WHERE <cond> Supprime des lignes.\n"
+            " \n"
         )
         print(help_message)
         return True
     
     
     try:
-        if action == "CREATE" and len(args) >= 2 and args[0].upper() == "TABLE":
-            table_name = args[1]
-            fields_def = args[2:]
-            db_core.create_table(table_name, fields_def)
-        
+        if action == "USE" and len(args) == 1:
+            db_core.use_db(args[0])
+
+        elif action == "CREATE" and len(args) >= 2:
+            if args[0].upper() == "DATABASE":
+                database_name = args[1]
+                db_core.create_database(database_name)
+            elif args[0].upper() == "TABLE":
+                table_name = args[1]
+                fields_def = args[2:]
+                db_core.create_table(table_name, fields_def)
+            else:
+                print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
+
         elif action == "INSERT" and len(args) >= 3 and args[0].upper() == "INTO":
             table_name = args[1]
             values = args[2:]
@@ -54,8 +72,13 @@ def execute_command(action: str, args: list[str]) -> bool:
             else:
                 print("Erreur de syntaxe: SELECT * FROM <table_name>")
 
-        elif action == "SHOW" and len(args) == 1 and args[0].upper() == "TABLES":
-            db_core.show_tables()
+        elif action == "SHOW" and len(args) == 1:
+            if args[0].upper() == "DATABASES":
+                db_core.show_databases()
+            elif args[0].upper() == "TABLES":
+                db_core.show_tables()
+            else:
+                print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
             
         else:
             print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
@@ -92,12 +115,12 @@ def start_cli():
 
 
 if __name__ == "__main__":
-    class MockDBCore:
+    """class MockDBCore:
         def load_db(self): print("[DB_CORE] Initialisation OK.")
         def create_table(self, name, fields): print(f"[DB_CORE] Création de la table '{name}' avec champs: {fields}")
         def insert_data(self, name, values): print(f"[DB_CORE] Insertion dans '{name}': {values}")
         def select_all(self, name): return [f"ligne 1 de {name}"]
         def show_tables(self): print("[DB_CORE] Tables: users, products")
 
-    db_core = MockDBCore()
+    db_core = MockDBCore()"""
     start_cli()

@@ -1,11 +1,6 @@
 import json
 import os
 
-DATA_DIR = 'data'
-STRUCTURE_DIR = 'structure'
-
-class DBCore:
-    import os
 
 class DBCore:
     def __init__(self):
@@ -13,29 +8,44 @@ class DBCore:
         self.STRUCTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'structure')
         self.CURRENT_DB  = None
         self.schemas = {}
+        self.DATABASES = []
         
         
     def load_db(self):
 
+        databases = []
+        try:
+            all_entries = os.listdir(self.STRUCTURE_DIR)
+            for entry in all_entries:
+                full_path = os.path.join(self.STRUCTURE_DIR, entry)
+                if os.path.isdir(full_path):
+                    if not entry.startswith('.'):
+                        databases.append(entry)
+
+        except Exception as e:
+            print(f"❌ Erreur lors de la liste des bases de données: {e}")  
+
+        self.DATABASES = databases
+
+
         if not self.CURRENT_DB:
             print("Aucune base de données sélectionnée. Schémas non chargés.")
             return
-
-        print("Chargement des structures de base de données...")
         
         self.schemas = {}
         try:
-            for filename in os.listdir(self.STRUCTURE_DIR):
-                table_name = filename.replace("_schema.json", "")
-                schema_path = os.path.join(self.STRUCTURE_DIR,self.CURRENT_DB, filename)
-                
-                with open(schema_path, 'r', encoding='utf-8') as f:
-                    schema = json.load(f)
+            schema_list =  os.listdir(os.path.join(self.STRUCTURE_DIR,self.CURRENT_DB))
+            if schema_list:
+                for filename in schema_list:
+                    table_name = filename.replace("_schema.json", "")
+                    schema_path = os.path.join(self.STRUCTURE_DIR,self.CURRENT_DB, filename)
                     
+                    with open(schema_path, 'r', encoding='utf-8') as f:
+                        schema = json.load(f)
+         
                     self.schemas[table_name] = schema
-                    print(f"   - Schéma chargé pour la table '{table_name}'")
-                        
-            print(f"{len(self.schemas)} schéma(s) chargé(s) avec succès.")
+
+                print(f"{len(self.schemas)} schéma(s) chargé(s) avec succès.")
             
         except FileNotFoundError:
             print(f"⚠️ Avertissement: Le dossier de structures ({self.STRUCTURE_DIR}) est vide ou manquant. Aucune table chargée.")
@@ -67,7 +77,7 @@ class DBCore:
         return schema_path
         
     def _read_data(self, table_name: str) -> list:
-        if not self.current_db:
+        if not self.CURRENT_DB:
             raise Exception("❌ Erreur: Aucune base de données sélectionnée pour lire les données.")
 
         try:
@@ -89,11 +99,11 @@ class DBCore:
             raise
         
     def _write_data(self, table_name: str, data: list):
-        if not self.current_db:
+        if not self.CURRENT_DB:
             raise Exception("❌ Erreur: Aucune base de données sélectionnée pour écrire les données.")
 
         try:
-            data_path = self._get_data_path(table_name, self.current_db)
+            data_path = self._get_data_path(table_name, self.CURRENT_DB)
             
             with open(data_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=4, ensure_ascii=False)
@@ -105,83 +115,81 @@ class DBCore:
         except Exception as e:
             print(f"❌ Erreur lors de l'écriture des données de la table '{table_name}' : {e}")
             raise
+
+    
+    def create_database(self, database_name: str):
+        if not database_name:
+            raise ValueError("Le nom de la base de données ne peut pas être vide.")
+       
+        db_data_path = os.path.join(self.DATA_DIR, database_name)
+        db_struct_path = os.path.join(self.STRUCTURE_DIR, database_name)
+        
+        
+        if database_name in self.DATABASES:
+            raise ValueError(f"❌ Erreur: La base de données '{database_name}' existe déjà.")
+
+        try:
+            os.makedirs(db_data_path)
+            os.makedirs(db_struct_path)
+            
+            print(f"✅ Base de données '{database_name}' créée avec succès.")
+            self.load_db()
+
+        except Exception as e:
+            print(f"❌ Erreur lors de la création des dossiers de la base de données : {e}")
+            if os.path.exists(db_data_path): os.rmdir(db_data_path)
+            if os.path.exists(db_struct_path): os.rmdir(db_struct_path)
+            raise
         
     def show_tables(self):
-        if not self.current_db:
+        if not self.CURRENT_DB:
             print("❌ Erreur: Aucune base de données sélectionnée. Utilisez la commande 'USE <db_name>'.")
             return
-
-        db_struct_dir = os.path.join(self.STRUCTURE_DIR, self.current_db)
         
-        try:
-            filenames = os.listdir(db_struct_dir)
-            tables = []
-            for filename in filenames:
-                if filename.endswith("_schema.json"):
-                    table_name = filename.replace("_schema.json", "")
-                    tables.append(table_name)
-
-            if not tables:
-                print(f"\nTables dans la base de données '{self.current_db}' :")
-                print("=========================")
-                print("| Aucune table trouvée.      |")
-                print("=========================")
-                return
-            
-            
-            max_len = max(len(t) for t in tables)
-            col_width = max_len + 4 
-            separator_width = col_width + 3 
-            separator_line = "=" * separator_width
-
-            print(f"\nTables dans la base de données '{self.current_db}' :")
-            print(separator_line)
-            
-            for table in sorted(tables):
-                print(f"| {table.ljust(col_width)}|")
-
-            print(separator_line)
-
-        except FileNotFoundError:
-            print(f"\nTables dans la base de données '{self.current_db}' :")
+        if not self.schemas:
+            print(f"\nTables dans la base de données '{self.CURRENT_DB}' :")
             print("=========================")
-            print(f"| Le dossier de structure pour '{self.current_db}' est introuvable. |")
+            print("| Aucune table trouvée.      |")
             print("=========================")
-        except Exception as e:
-            print(f"\nErreur inattendue lors de la liste des tables: {e}")
+            return
+            
+            
+        max_len = max(len(t) for t in self.schemas)
+        col_width = max_len + 4 
+        separator_width = col_width + 3 
+        separator_line = "=" * separator_width
+
+        print(f"\nTables dans la base de données '{self.CURRENT_DB}' :")
+        print(separator_line)
+        
+        for table in sorted(self.schemas):
+            print(f"| {table.ljust(col_width)}|")
+
+        print(separator_line)
+
+        
 
     def show_databases(self):
         print("\nBases de données disponibles :")
+           
+        if not self.DATABASES:
+            print("==============================")
+            print("| Aucune base de données trouvée. |")
+            print("==============================")
+            return
         
-        try:
-            all_entries = os.listdir(self.STRUCTURE_DIR)
-            databases = []
-            for entry in all_entries:
-                full_path = os.path.join(self.STRUCTURE_DIR, entry)
-                if os.path.isdir(full_path):
-                    if not entry.startswith('.'):
-                        databases.append(entry)
-            
-            if not databases:
-                print("==============================")
-                print("| Aucune base de données trouvée. |")
-                print("==============================")
-                return
-            
-            max_len = max(len(d) for d in databases)
-            col_width = max_len + 4 
-            separator_width = col_width + 3 
-            separator_line = "=" * separator_width
+        max_len = max(len(d) for d in self.DATABASES)
+        col_width = max_len + 4 
+        separator_width = col_width + 3 
+        separator_line = "=" * separator_width
 
-            print(separator_line)
-            
-            for db_name in sorted(databases):
-                print(f"| {db_name.ljust(col_width)}|")
+        print(separator_line)
+        
+        for db_name in sorted(self.DATABASES):
+            print(f"| {db_name.ljust(col_width)}|")
 
-            print(separator_line)
-
-        except Exception as e:
-            print(f"❌ Erreur lors de la liste des bases de données: {e}")    
+        print(separator_line)
+          
 
     def _validate_type(self, value, expected_type: str) -> bool:
         expected_type = expected_type.lower()
@@ -221,7 +229,7 @@ class DBCore:
         return False
 
     def create_table(self, table_name: str, fields_def: list):
-        if not self.current_db:
+        if not self.CURRENT_DB:
             raise Exception("❌ Erreur: Aucune base de données sélectionnée. Utilisez 'USE <db_name>' avant de créer une table.")
 
         if not table_name:
@@ -280,9 +288,6 @@ class DBCore:
             
             is_required = 'notnull' in parts or 'required' in parts
             
-            if is_required or is_pk:
-                field_definition["required"] = True
-            
             default_value = None
             for part in parts:
                 if part.startswith('default='):
@@ -290,14 +295,26 @@ class DBCore:
                     break
 
             if default_value is not None:
-                field_definition["default"] = default_value
+                if self._validate_type(default_value, column_type):
+                    field_definition["default"] = default_value
+                else:
+                    determined_type = type(default_value).__name__
+                    raise TypeError(
+                        f"La valeur par défaut '{default_value}' (Type Python: {determined_type}) "
+                        f"n'est pas valide pour le type de colonne déclaré: '{column_type}'."
+                    )
+            if is_required:
+                if default_value and self._validate_type(default_value, column_type):
+                    field_definition["required"] = True
+                else:
+                    raise TypeError(
+                        f"Les conditions 'notnull' doit avoir un valeur par defaut"
+                    )
+            elif is_pk:
+                field_definition["required"] = True
                 
-            if not self._validate_type(default_value, column_type):
-                     determined_type = type(default_value).__name__
-                     raise TypeError(
-                         f"La valeur par défaut '{default_value}' (Type Python: {determined_type}) "
-                         f"n'est pas valide pour le type de colonne déclaré: '{column_type}'."
-                     )
+                
+            
 
             new_schema["fields"].append(field_definition)
 
@@ -314,7 +331,7 @@ class DBCore:
             with open(data_path, 'w', encoding='utf-8') as f:
                 json.dump([], f, indent=4, ensure_ascii=False)
                 
-            print(f"✅ Table '{table_name}' créée avec succès dans la base de données '{self.current_db}'.")
+            print(f"✅ Table '{table_name}' créée avec succès dans la base de données '{self.CURRENT_DB}'.")
 
             self.load_db()
             
