@@ -1,8 +1,7 @@
-import sys
 from db_core import db_core 
 
 
-DB_NAME = "realSQL"
+DB_NAME = "realDB"
 
 def parse_command(command: str) -> tuple[str, list[str]]:
     if not command:
@@ -31,10 +30,12 @@ def execute_command(action: str, args: list[str]) -> bool:
             " \n"
             "    SHOW DATABASES .......... Liste toutes les bases de données.\n"
             "    CREATE DATABASE <nom> ... Crée un nouveau dossier de base de données.\n"
+            "    DROP DATABASE <nom> ...........Supprimer une database.\n"
             "    USE <db_name> ........... Sélectionne la base de données active.\n"
             " \n"
             "    SHOW TABLES ............. Liste toutes les tables de la DB active.\n"
             "    DESCRIBE <table_name> ......Liste toutes les champq de la table.\n"
+            "    DROP TABLE <nom> ...........Supprimer une table.\n"
             "    CREATE TABLE <nom> <champs> Crée une nouvelle table (ex: id:int:pk name:str).\n"
             "    INSERT INTO <table_nom> <valeurs> Insère une ligne dans la table.\n"
             "    SELECT * FROM <table_nom> .. Affiche toutes les données de la table.\n"
@@ -60,6 +61,17 @@ def execute_command(action: str, args: list[str]) -> bool:
                 db_core.create_table(table_name, fields_def)
             else:
                 print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
+        
+        
+        elif action == "DROP" and len(args) == 2:
+            if args[0].upper() == "DATABASE":
+                database_name = args[1]
+                db_core.drop_database(database_name)
+            elif args[0].upper() == "TABLE":
+                table_name = args[1]
+                db_core.drop_table(table_name)
+            else:
+                print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
 
         elif action == "INSERT" and len(args) >= 3 and args[0].upper() == "INTO":
             table_name = args[1]
@@ -67,9 +79,8 @@ def execute_command(action: str, args: list[str]) -> bool:
             db_core.insert_data(table_name, values)
             
         elif action == "SELECT":
-            if len(args) == 3 and args[1].upper() == "FROM":
-                results = db_core.select_all(args[2])
-                print(f"Résultats pour {args[2]}:\n {results}")
+            if len(args) == 3 and args[0] == "*" and args[1].upper() == "FROM":
+                results = db_core.select_all_data(args[2])
             else:
                 print("Erreur de syntaxe: SELECT * FROM <table_name>")
 
@@ -102,7 +113,8 @@ def start_cli():
     while running:
         try:
             
-            user_input = input(f"{DB_NAME}> ").strip()
+            database = db_core.CURRENT_DB+">" if db_core.CURRENT_DB else ""
+            user_input = input(f"{DB_NAME}>{database} ").strip()
             
             if not user_input:
                 continue
@@ -119,12 +131,4 @@ def start_cli():
 
 
 if __name__ == "__main__":
-    """class MockDBCore:
-        def load_db(self): print("[DB_CORE] Initialisation OK.")
-        def create_table(self, name, fields): print(f"[DB_CORE] Création de la table '{name}' avec champs: {fields}")
-        def insert_data(self, name, values): print(f"[DB_CORE] Insertion dans '{name}': {values}")
-        def select_all(self, name): return [f"ligne 1 de {name}"]
-        def show_tables(self): print("[DB_CORE] Tables: users, products")
-
-    db_core = MockDBCore()"""
     start_cli()
