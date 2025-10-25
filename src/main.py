@@ -34,6 +34,7 @@ def execute_command(action: str, args: list[str]) -> bool:
             "    USE <db_name> ........... Sélectionne la base de données active.\n"
             " \n"
             "    SHOW TABLES ............. Liste toutes les tables de la DB active.\n"
+            "    DESCRIBE <table_name> ......Liste toutes les champq de la table.\n"
             "    CREATE TABLE <nom> <champs> Crée une nouvelle table (ex: id:int:pk name:str).\n"
             "    INSERT INTO <table_nom> <valeurs> Insère une ligne dans la table.\n"
             "    SELECT * FROM <table_nom> .. Affiche toutes les données de la table.\n"
@@ -79,6 +80,9 @@ def execute_command(action: str, args: list[str]) -> bool:
                 db_core.show_tables()
             else:
                 print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
+        
+        elif action == "DESCRIBE" and len(args) == 1:
+            db_core.describe_table(args[0])
             
         else:
             print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")

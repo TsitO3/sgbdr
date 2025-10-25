@@ -79,6 +79,10 @@ class DBCore:
     def _read_data(self, table_name: str) -> list:
         if not self.CURRENT_DB:
             raise Exception("❌ Erreur: Aucune base de données sélectionnée pour lire les données.")
+        elif not table_name:
+            raise ValueError("Le nom de la table ne peut pas être vide.")
+        elif table_name not in self.schemas:
+            raise Exception(f"❌ Erreur: La table {table_name} inconnue. Faites 'SHOW TABLES' pour lister les tables")
 
         try:
             data_path = self._get_data_path(table_name)
@@ -236,7 +240,7 @@ class DBCore:
             raise ValueError("Le nom de la table ne peut pas être vide.")
         
         if table_name in self.schemas.keys():
-            raise ValueError(f"❌ Erreur: La table '{table_name}' existe déjà dans la base de données '{self.current_db}'.")
+            raise ValueError(f"❌ Erreur: La table '{table_name}' existe déjà dans la base de données '{self.CURRENT_DB}'.")
             
         VALID_TYPES = ["integer", "string", "float", "boolean"]
         
@@ -303,6 +307,7 @@ class DBCore:
                         f"La valeur par défaut '{default_value}' (Type Python: {determined_type}) "
                         f"n'est pas valide pour le type de colonne déclaré: '{column_type}'."
                     )
+
             if is_required:
                 if default_value and self._validate_type(default_value, column_type):
                     field_definition["required"] = True
@@ -339,9 +344,151 @@ class DBCore:
             print(f"❌ Erreur lors de la sauvegarde de la table : {e}")
             raise
 
-    def insert_data(self, table_name, values):
-        # Valide les données avec le schéma, ajoute l'enregistrement et écrit le fichier
-        pass
+    def describe_table(self, table_name):
+        if not self.CURRENT_DB:
+            raise Exception("❌ Erreur: Aucune base de données sélectionnée pour lire les données.")
+        elif not table_name:
+            raise ValueError("Le nom de la table ne peut pas être vide.")
+        elif table_name not in self.schemas:
+            raise Exception(f"❌ Erreur: La table {table_name} inconnue. Faites 'SHOW TABLES' pour lister les tables")
+        else:
+            schema = self.schemas[table_name]
+            schema = self.schemas[table_name]
+            fields = schema.get('fields', [])
+            
+            max_col_len = max(len(f['column']) for f in fields) if fields else 10
+            
+            COL_NAME_WIDTH = max_col_len + 2
+            TYPE_WIDTH = 10
+            NULL_WIDTH = 6
+            KEY_WIDTH = 6
+            DEFAULT_WIDTH = 15
+            
+            separator_width = COL_NAME_WIDTH + TYPE_WIDTH + NULL_WIDTH + KEY_WIDTH + DEFAULT_WIDTH
+
+            separator_line = "=" * (separator_width+16)
+
+            print(f"\nDescription de la table '{table_name}' dans '{self.CURRENT_DB}' :")
+            print(separator_line)
+
+            header = f"| {'Field'.ljust(COL_NAME_WIDTH)} | {'Type'.ljust(TYPE_WIDTH)} | {'Null'.ljust(NULL_WIDTH)} | {'Key'.ljust(KEY_WIDTH)} | {'Default'.ljust(DEFAULT_WIDTH)} |"
+            print(header)
+            print(separator_line)
+
+            for field in fields:
+                column = field['column']
+                dtype = field['type']
+                is_pk = 'PK' if field.get('primary_key') else ''
+                allows_null = 'NO' if field.get('required') else 'YES'
+                default_val = field.get('default')
+                if default_val is not None:
+                    display_default = str(default_val).replace('\n', ' ').ljust(DEFAULT_WIDTH)
+                else:
+                    display_default = 'NULL'.ljust(DEFAULT_WIDTH)
+                key_display = is_pk
+                if field.get('auto_increment'):
+                    key_display = 'PK A/I' if is_pk else 'A/I'
+                
+                row = (
+                    f"| {column.ljust(COL_NAME_WIDTH)} "
+                    f"| {dtype.ljust(TYPE_WIDTH)} "
+                    f"| {allows_null.ljust(NULL_WIDTH)} "
+                    f"| {key_display.ljust(KEY_WIDTH)} "
+                    f"| {display_default.ljust(DEFAULT_WIDTH)} |"
+                )
+                print(row)
+
+            print(separator_line)
+
+    def insert_data(self, table_name: str, values: list):
+        if not self.CURRENT_DB:
+            raise Exception("❌ Erreur: Aucune base de données sélectionnée (USE DB).")
+
+        if table_name not in self.schemas:
+            raise ValueError(f"❌ Erreur: La table '{table_name}' n'existe pas ou n'est pas chargée.")
+            
+        schema = self.schemas[table_name]
+        records = self._read_data(table_name)
+        new_record = {}
+        
+        value_index = 0
+        
+        for field in schema['fields']:
+            column_name = field['column']
+            expected_type = field['type']
+            
+            if field.get('auto_increment'):
+                new_id = self.auto_increment_counters.get(table_name, 1)
+                new_record[column_name] = new_id
+                # 2. Incrémente le compteur pour le prochain enregistrement
+                self.auto_increment_counters[table_name] = new_id + 1
+                # L'ID est généré, on passe au champ suivant du schéma
+                continue 
+
+            # --- Détermination de la Valeur ---
+            
+            # Vérifier s'il reste des valeurs fournies par l'utilisateur à traiter
+            if value_index < len(values):
+                value = values[value_index]
+                value_index += 1 # Préparer l'index pour la prochaine valeur utilisateur
+                source = "user"
+            else:
+                value = None # Aucune valeur fournie par l'utilisateur
+                source = "none"
+
+            # --- Application des Contraintes NOT NULL et DEFAULT ---
+            
+            is_required = field.get('required', False)
+            default_value = field.get('default')
+
+            # Si la valeur est absente de l'input utilisateur (None ou index dépassé)
+            if value is None and source == "none":
+                
+                if default_value is not None:
+                    # Utiliser la valeur par défaut si elle existe
+                    value = default_value
+                elif is_required:
+                    # Rejeter l'insertion si le champ est requis et qu'il n'y a pas de valeur par défaut
+                    raise ValueError(f"❌ Erreur: La colonne requise '{column_name}' est manquante et n'a pas de valeur par défaut.")
+                else:
+                    # Le champ n'est pas requis et n'a pas de valeur (sera stocké comme None/null)
+                    new_record[column_name] = None
+                    continue # Passer au champ suivant du schéma
+
+            # --- Validation Finale de la Valeur (utilisez _validate_type) ---
+
+            if not self._validate_type(value, expected_type):
+                # Erreur de type : peut arriver même avec default_value si l'utilisateur a donné un input
+                # ou si default_value est d'un type incorrect (bien que vérifié dans create_table)
+                determined_type = type(value).__name__
+                raise TypeError(
+                    f"❌ Erreur de type pour la colonne '{column_name}'. Valeur '{value}' (Type: {determined_type}) "
+                    f"n'est pas valide pour le type attendu: '{expected_type}'."
+                )
+
+            # --- Ajout de la valeur validée ---
+            new_record[column_name] = value
+
+        # --- 2. Validation des Contraintes d'Unicité (PK non auto-incrémentée) ---
+        
+        for field in schema['fields']:
+            if field.get('primary_key') and not field.get('auto_increment'):
+                pk_column = field['column']
+                pk_value = new_record[pk_column]
+                
+                # Vérifier si cette valeur PK existe déjà
+                if any(record.get(pk_column) == pk_value for record in records):
+                    raise ValueError(f"❌ Erreur de contrainte: La valeur '{pk_value}' est déjà utilisée pour la clé primaire '{pk_column}'.")
+        
+        # --- 3. Insertion et Sauvegarde ---
+        records.append(new_record)
+        self._write_data(table_name, records)
+        
+        # Message de confirmation
+        generated_id = new_record.get(pk_column, new_record.get(schema['fields'][0]['column'])) 
+        print(f"✅ Insertion réussie dans '{table_name}'. Enregistrement ajouté.")
+
+        return generated_id
         
     def select_all(self, table_name):
         # Lit les données et les retourne toutes
