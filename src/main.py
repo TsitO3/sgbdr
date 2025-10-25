@@ -39,6 +39,7 @@ def execute_command(action: str, args: list[str]) -> bool:
             "    CREATE TABLE <nom> <champs> Crée une nouvelle table (ex: id:int:pk name:str).\n"
             "    INSERT INTO <table_nom> <valeurs> Insère une ligne dans la table.\n"
             "    SELECT * FROM <table_nom> .. Affiche toutes les données de la table.\n"
+            "    SELECT * FROM <table_nom> WHERE <condition>.. Affiche toutes les données de la table.\n"
             "    UPDATE <nom> SET <col> = <val> WHERE <cond> Modifie des lignes.\n"
             "    DELETE FROM <nom> WHERE <cond> Supprime des lignes.\n"
             " \n"
@@ -80,7 +81,12 @@ def execute_command(action: str, args: list[str]) -> bool:
             
         elif action == "SELECT":
             if len(args) == 3 and args[0] == "*" and args[1].upper() == "FROM":
-                results = db_core.select_all_data(args[2])
+                table_name = args[2]
+                db_core.select_data(table_name, "")
+            elif len(args) >= 5 and args[0] == "*" and args[1].upper() == "FROM" and args[3].upper() == "WHERE":
+                condition = args[4:]
+                table_name = args[2]
+                db_core.select_data(table_name, condition)
             else:
                 print("Erreur de syntaxe: SELECT * FROM <table_name>")
 

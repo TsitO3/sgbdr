@@ -542,56 +542,34 @@ class DBCore:
             raise
 
 
-    def select_all_data(self, table_name: str):
+    
+    def display_result(self, colname: list , resultat: list):
+        col_widths = {name: len(name) for name in colname}
 
-        if not self.CURRENT_DB:
-            print("❌ Erreur: Aucune base de données sélectionnée.")
-            return
-
-        if table_name not in self.schemas:
-            print(f"❌ Erreur: La table '{table_name}' n'existe pas.")
-            return
-
-        records = self._read_data(table_name)
-        
-        if not records:
-            print(f"La table '{table_name}' est vide.")
-            return
-
-        schema = self.schemas[table_name]
-        column_names = [field['column'] for field in schema['fields']]
-        
-        col_widths = {name: len(name) for name in column_names}
-
-        for record in records:
-            for name in column_names:
+        for record in resultat:
+            for name in colname:
                 value = record.get(name)
-                
                 display_value = 'NULL' if value is None else str(value)
-                
                 col_widths[name] = max(col_widths[name], len(display_value))
 
-        
-        
-        total_width = sum(col_widths.values()) + (len(column_names) * 3) + 1
+        total_width = sum(col_widths.values()) + (len(colname) * 3) + 1
         separator = "=" * total_width
 
         print(separator)
 
         header_row = "|"
-        for name in column_names:
+        for name in colname:
             width = col_widths[name]
             header_row += f" {name.center(width)} |"
         print(header_row)
         
         print(separator)
 
-        for record in records:
+        for record in resultat:
             data_row = "|"
-            for name in column_names:
+            for name in colname:
                 width = col_widths[name]
                 value = record.get(name)
-                
                 display_value = 'NULL' if value is None else str(value)
                 
                 data_row += f" {display_value.ljust(width)} |"
@@ -599,7 +577,123 @@ class DBCore:
             print(data_row)
 
         print(separator)
+    
+    def _evaluate_condition(self, record: dict, parts: list) -> bool:
+
+        if len(parts) != 3:
+            raise ValueError(f"Format de condition invalide: '{' '.join(parts)}'. Format attendu: 'colonne opérateur valeur'.")
+
+        col_name, operator, raw_target_value = parts
         
+        record_value = record.get(col_name)
+
+        target_str = raw_target_value.strip("'").strip('"')
+        
+        try:
+            if isinstance(record_value, (int, float)):
+                target_value = float(target_str)
+            elif isinstance(record_value, bool):
+                target_value = target_str.lower() in ('true', '1')
+            else:
+                target_value = target_str
+                
+        except ValueError:
+            target_value = target_str 
+            
+        if operator == '==':
+            return record_value == target_value
+        elif operator == '!=':
+            return record_value != target_value
+        elif operator == '>':
+            return record_value is not None and record_value > target_value
+        elif operator == '<':
+            return record_value is not None and record_value < target_value
+        elif operator == '>=':
+            return record_value is not None and record_value >= target_value
+        elif operator == '<=':
+            return record_value is not None and record_value <= target_value
+        else:
+            raise ValueError(f"Opérateur non supporté: {operator}")
+    
+
+
+    def select_data(self, table_name: str, condition_list: str = None):
+        if not self.CURRENT_DB:
+            print("❌ Erreur: Aucune base de données sélectionnée.")
+            return
+
+        if table_name not in self.schemas:
+            print(f"❌ Erreur: La table '{table_name}' n'existe pas.")
+            return
+        all_records = self._read_data(table_name)
+        if condition_list:
+
+            if len(condition_list) % 2 == 0:
+                raise SyntaxError(f"Les conditions sont manquant. voir 'HELP'")
+
+            conds_list = condition_list[::2]
+            logical_operands = condition_list[1::2]
+
+            starting_records = all_records
+            result = []
+            for i,cond in enumerate(conds_list):
+                if i != 0:
+                    print(f"i = {i} et i-1 = {i-1}")
+                    if logical_operands[i-1].lower() == "or":
+                        starting_records = all_records
+                    elif logical_operands[i-1].lower() == "and":
+                        starting_records = result
+                    if cond:
+                        keys = starting_records[0].keys()
+                        parts = cond.split(":")
+                        if parts[0] not in keys:
+                            raise ValueError(f"Colonne inconnu: {parts[0]}.")
+                        try:
+                            filtered_records = [
+                                record for record in starting_records 
+                                if self._evaluate_condition(record, parts)
+                            ]
+                        except ValueError as e:
+                            print(f"❌ Erreur de syntaxe de la condition WHERE : {e}")
+                            return
+                    else:
+                        filtered_records = starting_records
+                    if logical_operands[i-1].lower() == "or":
+                        result.extend(filtered_records)
+                    elif logical_operands[i-1].lower() == "and":
+                        result = filtered_records
+                else:
+                    if cond:
+                        keys = starting_records[0].keys()
+                        parts = cond.split(":")
+                        if parts[0] not in keys:
+                            raise ValueError(f"Colonne inconnu: {parts[0]}.")
+                        try:
+                            result = [
+                                record for record in starting_records 
+                                if self._evaluate_condition(record, parts)
+                            ]
+                        except ValueError as e:
+                            print(f"❌ Erreur de syntaxe de la condition WHERE : {e}")
+                            return
+                    else:
+                        result = starting_records
+        else:
+            result = all_records
+
+                
+
+        if not result:
+            print(f"Aucun enregistrement trouvé pour la table '{table_name}' correspondant à la condition.")
+            return
+
+        schema = self.schemas[table_name]
+        column_names = [field['column'] for field in schema['fields']]
+        result = list(dict.fromkeys(result))
+        self.display_result(column_names, result)
+        
+
+
     def update_data(self, table_name, update_clause):
         # Modifie les enregistrements correspondant à la clause WHERE
         pass
