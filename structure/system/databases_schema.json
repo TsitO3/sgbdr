@@ -1,0 +1,25 @@
+{
+    "name": "databases",
+    "fields": [
+        {
+            "column": "nom",
+            "type": "string",
+            "default": "mybase",
+            "required": true
+        },
+        {
+            "column": "createdat",
+            "type": "string"
+        },
+        {
+            "column": "modifiedat",
+            "type": "string"
+        },
+        {
+            "column": "owner",
+            "type": "string",
+            "default": "root",
+            "required": true
+        }
+    ]
+}

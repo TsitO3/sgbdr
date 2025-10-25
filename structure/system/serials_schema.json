@@ -1,0 +1,20 @@
+{
+    "name": "serials",
+    "fields": [
+        {
+            "column": "id",
+            "type": "integer",
+            "primary_key": true,
+            "required": true,
+            "auto_increment": true
+        },
+        {
+            "column": "nomtable",
+            "type": "string"
+        },
+        {
+            "column": "value",
+            "type": "integer"
+        }
+    ]
+}
