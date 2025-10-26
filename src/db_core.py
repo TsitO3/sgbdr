@@ -10,7 +10,27 @@ class DBCore:
         self.CURRENT_DB  = None
         self.schemas = {}
         self.DATABASES = []
-        
+        self.DB_SYSTEM = "system"
+        self.schemas_system = {}
+        try:
+            schema_list =  os.listdir(os.path.join(self.STRUCTURE_DIR,self.DB_SYSTEM))
+            if schema_list:
+                for filename in schema_list:
+                    table_name = filename.replace("_schema.json", "")
+                    schema_path = os.path.join(self.STRUCTURE_DIR,self.DB_SYSTEM, filename)
+                    
+                    with open(schema_path, 'r', encoding='utf-8') as f:
+                        schema = json.load(f)
+         
+                    self.schemas_system[table_name] = schema
+            
+        except FileNotFoundError:
+            print(f"⚠️ Avertissement: Le dossier de structures ({self.DB_SYSTEM}) est vide ou manquant. Aucune table chargée.")
+        except json.JSONDecodeError as e:
+            print(f"❌ Erreur: Fichier de schéma JSON invalide : {filename}. Détails : {e}")
+        except Exception as e:
+            print(f"❌ Une erreur inattendue est survenue lors du chargement des schémas : {e}")
+
         
     def load_db(self):
 
@@ -251,7 +271,6 @@ class DBCore:
         pk_count = 0 
         
         for field_str in fields_def:
-            # Format attendu : nom:type[:PK][:AUTO]
             parts = field_str.lower().split(':')
             
             if len(parts) < 2:
@@ -286,6 +305,19 @@ class DBCore:
                     raise ValueError("L'auto-incrément ne peut être appliqué qu'à un type 'integer'.")
                 field_definition["auto_increment"] = True
 
+
+                tmp_schemas = self.schemas
+                tmp_db = self.CURRENT_DB
+
+                self.CURRENT_DB = self.DB_SYSTEM
+                self.schemas = self.schemas_system
+
+                print("Teto no tapaka")
+                self.insert_data("serials", [f":{table_name}:1"], True)
+                print("Tato no tapaka fa tsy tany")
+
+                self.CURRENT_DB = tmp_db
+                self.schemas = tmp_schemas
 
             
             is_required = 'notnull' in parts or 'required' in parts
@@ -397,8 +429,45 @@ class DBCore:
                 print(row)
 
             print(separator_line)
+    
+    def get_serial_id(self, table_name: str):
+        data_path = os.path.join(self.DATA_DIR, self.DB_SYSTEM, "serials_data.json")
+        print("le path est ", data_path)
+        try:
+            with open(data_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                
+            if not isinstance(data, list):
+                raise TypeError("Le fichier de données JSON n'est pas une liste d'enregistrements valide.")
 
-    def insert_data(self, table_name: str, listvalues: list):
+            index = 0
+            new_data = []
+            for i,elem in enumerate(data):
+                if elem["nomtable"] == table_name:
+                    new_id = int(elem["value"])
+                    print(data[i])
+                    elem["value"] = str(new_id+1)
+                    print(new_id, elem["value"])
+                    print(data[i])
+                    index = i
+                new_data.append(data[i])
+
+            
+        except FileNotFoundError:
+            print("Fichier introuvable.")
+            raise
+            
+        except json.JSONDecodeError:
+            print(f"❌ Erreur: Le fichier de données de la table '{table_name}' est corrompu (JSON invalide).")
+            raise
+
+        os.remove(data_path)
+        print("Le donnée avant l'enregistrement : ",new_data[index])
+        
+        self._write_data(table_name, new_data)
+        return new_id
+
+    def insert_data(self, table_name: str, listvalues: list, flag: bool = False):
         if not self.CURRENT_DB:
             raise Exception("❌ Erreur: Aucune base de données sélectionnée (USE DB).")
 
@@ -409,12 +478,11 @@ class DBCore:
         records = self._read_data(table_name)
 
         counter = 0
-        print("liste des valeurs", listvalues)
         for values in listvalues:
             new_record = {}
             counter += 1
             values = values.split(":")
-        
+            print("les valeurs", values)
 
             if len(values) > len(schema['fields']):
                 raise ValueError(f"❌ Erreur: Trop de valeurs fournies. Attendu: {len(schema['fields'])} champs.")
@@ -427,16 +495,19 @@ class DBCore:
                 
                 if pk_constraint:
                     if field.get('auto_increment'):
-                        pass
+                        print("Prendre l'id...")
+                        new_id = self.get_serial_id(table_name)
+                        print("L'id est ",new_id)
                     else:
                         if values[i] == "":
                             raise ValueError("Le clé primaire ne peut pas être null")
                         if not self._validate_type(values[i], expected_type):
                             raise ValueError(f"Le type de la clé primaire doit être {expected_type}")
+                        new_id = values[i]
                     for record in records:
-                        if record[column_name] == values[i]:
-                            raise ValueError(f"❌ Erreur de contrainte: La valeur '{values[i]}' est déjà utilisée pour la clé primaire.")
-                    new_record[column_name] = values[i]
+                        if record[column_name] == new_id:
+                            raise ValueError(f"❌ Erreur de contrainte: La valeur '{new_id}' est déjà utilisée pour la clé primaire.")
+                    new_record[column_name] = new_id
 
                 else:
 
@@ -461,7 +532,8 @@ class DBCore:
             records.append(new_record)
         self._write_data(table_name, records)
         
-        print(f"✅ Insertion réussie dans '{table_name}'. {counter} Enregistrement ajouté.")
+        if not flag:
+            print(f"✅ Insertion réussie dans '{table_name}'. {counter} Enregistrement ajouté.")
         
 
     def drop_table(self, table_name: str):
@@ -617,7 +689,7 @@ class DBCore:
     
 
 
-    def select_data(self, table_name: str, condition_list: str = None):
+    def select_data(self, table_name: str, condition_list: str = None, columns: str = "*"):
         if not self.CURRENT_DB:
             print("❌ Erreur: Aucune base de données sélectionnée.")
             return
@@ -689,7 +761,21 @@ class DBCore:
 
         schema = self.schemas[table_name]
         column_names = [field['column'] for field in schema['fields']]
-        result = list(dict.fromkeys(result))
+
+        
+        if columns != "*":
+            filter = []
+            columns_list = columns.split(",")
+            for column in columns_list:
+                if column not in column_names:
+                    raise KeyError(f"Colonne inconnue : {column}")
+            for res in result:
+                record = {}
+                for column in columns_list:
+                    record[column] = res[column]
+                filter.append(record)
+            result = filter
+            column_names = columns_list
         self.display_result(column_names, result)
         
 

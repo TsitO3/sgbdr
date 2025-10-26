@@ -80,13 +80,13 @@ def execute_command(action: str, args: list[str]) -> bool:
             db_core.insert_data(table_name, values)
             
         elif action == "SELECT":
-            if len(args) == 3 and args[0] == "*" and args[1].upper() == "FROM":
+            if len(args) == 3 and args[1].upper() == "FROM":
                 table_name = args[2]
-                db_core.select_data(table_name, "")
-            elif len(args) >= 5 and args[0] == "*" and args[1].upper() == "FROM" and args[3].upper() == "WHERE":
+                db_core.select_data(table_name, "", args[0])
+            elif len(args) >= 5  and args[1].upper() == "FROM" and args[3].upper() == "WHERE":
                 condition = args[4:]
                 table_name = args[2]
-                db_core.select_data(table_name, condition)
+                db_core.select_data(table_name, condition, args[0])
             else:
                 print("Erreur de syntaxe: SELECT * FROM <table_name>")
 
