@@ -1,7 +1,9 @@
-from db_core import db_core 
+from db_core import db_core
+from user import user
 
 
 DB_NAME = "realDB"
+PERMISSION  = {}
 
 def parse_command(command: str) -> tuple[str, list[str]]:
     if not command:
@@ -51,56 +53,99 @@ def execute_command(action: str, args: list[str]) -> bool:
     try:
         if action == "USE" and len(args) == 1:
             db_core.use_db(args[0])
+            global PERMISSION
+            PERMISSION = get_perms()
 
         elif action == "CREATE" and len(args) >= 2:
             if args[0].upper() == "DATABASE":
-                database_name = args[1]
-                db_core.create_database(database_name)
+                if user.user == "root":
+                    database_name = args[1]
+                    db_core.create_database(database_name)
+                else:
+                    print("Permission non accordé.")
             elif args[0].upper() == "TABLE":
-                table_name = args[1]
-                fields_def = args[2:]
-                db_core.create_table(table_name, fields_def)
+                if PERMISSION["c"]:
+                    table_name = args[1]
+                    fields_def = args[2:]
+                    db_core.create_table(table_name, fields_def)
+                else:
+                    print("Permission non accordé.")
             else:
                 print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
+        
+
+        elif action == "DELETE":
+            if PERMISSION["d"]:
+                if len(args) == 3 and args[0] == "*" and args[1].upper() == "FROM":
+                    table_name = args[2]
+                    db_core.delete_data(table_name, "")
+                elif len(args)>3 and args[0].upper() == "FROM" and args[2].upper() == "WHERE":
+                    table_name = args[1]
+                    condition = args[3:]
+                    db_core.delete_data(table_name, condition)
+                else:
+                    print("Errreur de synthaxe : DELETE * FROM <TABLE> or DELETE FROM <TABLE> WHERE <CONDITION>")
+            else:
+                print("Permission non accordé.")
         
         
         elif action == "DROP" and len(args) == 2:
             if args[0].upper() == "DATABASE":
-                database_name = args[1]
-                db_core.drop_database(database_name)
+                if user.user == "root":
+                    database_name = args[1]
+                    db_core.drop_database(database_name)
+                else:
+                    print("Permission non accordé.")
             elif args[0].upper() == "TABLE":
-                table_name = args[1]
-                db_core.drop_table(table_name)
+                if PERMISSION["d"]:
+                    table_name = args[1]
+                    db_core.drop_table(table_name)
+                else:
+                    print("Permission non accordé.")
             else:
-                print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
+                print(f"Erreur de synthaxe : DROP TABLE/DATABASE <DATABASENAME/TABLENAME>")
+
 
         elif action == "INSERT" and len(args) >= 3 and args[0].upper() == "INTO":
-            table_name = args[1]
-            values = args[2:]
-            db_core.insert_data(table_name, values)
-            
-        elif action == "SELECT":
-            if len(args) == 3 and args[1].upper() == "FROM":
-                table_name = args[2]
-                db_core.select_data(table_name, "", args[0])
-            elif len(args) >= 5  and args[1].upper() == "FROM" and args[3].upper() == "WHERE":
-                condition = args[4:]
-                table_name = args[2]
-                db_core.select_data(table_name, condition, args[0])
+            if PERMISSION["c"]:
+                table_name = args[1]
+                values = args[2:]
+                db_core.insert_data(table_name, values)
             else:
-                print("Erreur de syntaxe: SELECT * FROM <table_name>")
+                print("Permission non accordé.")
+
+        elif action == "SELECT":
+            if PERMISSION["r"]:
+                if len(args) == 3 and args[1].upper() == "FROM":
+                    table_name = args[2]
+                    db_core.select_data(table_name, "", args[0])
+                elif len(args) >= 5  and args[1].upper() == "FROM" and args[3].upper() == "WHERE":
+                    condition = args[4:]
+                    table_name = args[2]
+                    db_core.select_data(table_name, condition, args[0])
+                else:
+                    print("Erreur de syntaxe: SELECT * FROM <table_name>")
+            else:
+                print("Permission non accordé.")
+
 
         elif action == "SHOW" and len(args) == 1:
-            if args[0].upper() == "DATABASES":
-                db_core.show_databases()
-            elif args[0].upper() == "TABLES":
-                db_core.show_tables()
+            if PERMISSION["r"]:
+                if args[0].upper() == "DATABASES":
+                    db_core.show_databases()
+                elif args[0].upper() == "TABLES":
+                    db_core.show_tables()
+                else:
+                    print(f" Erreur de synthaxe : SHOW TABLES/DATABASES")
             else:
-                print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
-        
+                print("Permission non accordé.")
+
         elif action == "DESCRIBE" and len(args) == 1:
-            db_core.describe_table(args[0])
-            
+            if PERMISSION["r"]:
+                db_core.describe_table(args[0])
+            else:
+                print("Permission non accordé.")
+
         else:
             print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
 
@@ -109,7 +154,19 @@ def execute_command(action: str, args: list[str]) -> bool:
         
     return True
 
+def get_perms():
+    create_p = user.has_permision(db_core.CURRENT_DB, "c")
+    read_p = user.has_permision(db_core.CURRENT_DB, "r")
+    delete_p = user.has_permision(db_core.CURRENT_DB, "d")
+    
+    return {"c": create_p, "r": read_p, "r": delete_p}
+
 def start_cli():
+
+    if not user.user:
+        user.user_log_in()
+    
+    
 
     print(f"Démarrage du {DB_NAME} - Tapez 'HELP' pour les commandes.")
     db_core.load_db()

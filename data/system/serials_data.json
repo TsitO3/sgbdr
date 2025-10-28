@@ -1,0 +1,17 @@
+[
+    {
+        "id": 1,
+        "nomtable": "serials",
+        "value": "4"
+    },
+    {
+        "id": 2,
+        "nomtable": "autotest",
+        "value": "7"
+    },
+    {
+        "id": 3,
+        "nomtable": "song",
+        "value": "3"
+    }
+]

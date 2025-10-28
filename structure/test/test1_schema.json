@@ -1,5 +1,5 @@
 {
-    "name": "test52",
+    "name": "test1",
     "fields": [
         {
             "column": "id",
@@ -10,6 +10,11 @@
         },
         {
             "column": "nom",
+            "type": "string",
+            "default": "rabe"
+        },
+        {
+            "column": "prenom",
             "type": "string"
         }
     ]

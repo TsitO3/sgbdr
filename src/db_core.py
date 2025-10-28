@@ -312,9 +312,7 @@ class DBCore:
                 self.CURRENT_DB = self.DB_SYSTEM
                 self.schemas = self.schemas_system
 
-                print("Teto no tapaka")
-                self.insert_data("serials", [f":{table_name}:1"], True)
-                print("Tato no tapaka fa tsy tany")
+                self.insert_data("serials", [f":{table_name}:2"], True)
 
                 self.CURRENT_DB = tmp_db
                 self.schemas = tmp_schemas
@@ -432,7 +430,6 @@ class DBCore:
     
     def get_serial_id(self, table_name: str):
         data_path = os.path.join(self.DATA_DIR, self.DB_SYSTEM, "serials_data.json")
-        print("le path est ", data_path)
         try:
             with open(data_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -440,16 +437,14 @@ class DBCore:
             if not isinstance(data, list):
                 raise TypeError("Le fichier de données JSON n'est pas une liste d'enregistrements valide.")
 
-            index = 0
+            
             new_data = []
             for i,elem in enumerate(data):
                 if elem["nomtable"] == table_name:
                     new_id = int(elem["value"])
-                    print(data[i])
                     elem["value"] = str(new_id+1)
-                    print(new_id, elem["value"])
-                    print(data[i])
                     index = i
+                    data[i] = elem
                 new_data.append(data[i])
 
             
@@ -461,10 +456,11 @@ class DBCore:
             print(f"❌ Erreur: Le fichier de données de la table '{table_name}' est corrompu (JSON invalide).")
             raise
 
-        os.remove(data_path)
-        print("Le donnée avant l'enregistrement : ",new_data[index])
+        tmp_db = self.CURRENT_DB
+        self.CURRENT_DB = self.DB_SYSTEM
+        self._write_data("serials", new_data)
+        self.CURRENT_DB = tmp_db
         
-        self._write_data(table_name, new_data)
         return new_id
 
     def insert_data(self, table_name: str, listvalues: list, flag: bool = False):
@@ -482,7 +478,6 @@ class DBCore:
             new_record = {}
             counter += 1
             values = values.split(":")
-            print("les valeurs", values)
 
             if len(values) > len(schema['fields']):
                 raise ValueError(f"❌ Erreur: Trop de valeurs fournies. Attendu: {len(schema['fields'])} champs.")
@@ -495,9 +490,7 @@ class DBCore:
                 
                 if pk_constraint:
                     if field.get('auto_increment'):
-                        print("Prendre l'id...")
                         new_id = self.get_serial_id(table_name)
-                        print("L'id est ",new_id)
                     else:
                         if values[i] == "":
                             raise ValueError("Le clé primaire ne peut pas être null")
@@ -528,7 +521,8 @@ class DBCore:
                             value = None
                         new_record[column_name] = value
 
-            print("valeur à ajouter", new_record)
+            
+            records = self._read_data(table_name)
             records.append(new_record)
         self._write_data(table_name, records)
         
@@ -784,9 +778,75 @@ class DBCore:
         # Modifie les enregistrements correspondant à la clause WHERE
         pass
         
-    def delete_data(self, table_name, where_clause):
-        # Supprime les enregistrements correspondant à la clause WHERE
-        pass
+    def delete_data(self, table_name, condition_list):
+        if not self.CURRENT_DB:
+            print("❌ Erreur: Aucune base de données sélectionnée.")
+            return
+
+        if table_name not in self.schemas:
+            print(f"❌ Erreur: La table '{table_name}' n'existe pas.")
+            return
+        
+        all_records = self._read_data(table_name)
+        if condition_list:
+
+            if len(condition_list) % 2 == 0:
+                raise SyntaxError(f"Les conditions sont manquant. voir 'HELP'")
+
+            conds_list = condition_list[::2]
+            logical_operands = condition_list[1::2]
+
+            starting_records = all_records
+            result = []
+            for i,cond in enumerate(conds_list):
+                if i != 0:
+                    if logical_operands[i-1].lower() == "or":
+                        starting_records = all_records
+                    elif logical_operands[i-1].lower() == "and":
+                        starting_records = result
+                    if cond:
+                        keys = starting_records[0].keys()
+                        parts = cond.split(":")
+                        if parts[0] not in keys:
+                            raise ValueError(f"Colonne inconnu: {parts[0]}.")
+                        try:
+                            filtered_records = [
+                                record for record in starting_records 
+                                if self._evaluate_condition(record, parts)
+                            ]
+                        except ValueError as e:
+                            print(f"❌ Erreur de syntaxe de la condition WHERE : {e}")
+                            return
+                    else:
+                        filtered_records = starting_records
+                    if logical_operands[i-1].lower() == "or":
+                        result.extend(filtered_records)
+                    elif logical_operands[i-1].lower() == "and":
+                        result = filtered_records
+                else:
+                    if cond:
+                        keys = starting_records[0].keys()
+                        parts = cond.split(":")
+                        if parts[0] not in keys:
+                            raise ValueError(f"Colonne inconnu: {parts[0]}.")
+                        try:
+                            result = [
+                                record for record in starting_records 
+                                if self._evaluate_condition(record, parts)
+                            ]
+                        except ValueError as e:
+                            print(f"❌ Erreur de syntaxe de la condition WHERE : {e}")
+                            return
+                    else:
+                        result = starting_records
+            new_data = []
+            for record in all_records:
+                if record not in result:
+                    new_data.append(record)
+            self._write_data(table_name, new_data)
+        else:
+            self._write_data(table_name, [])
+
 
 
 db_core = DBCore()
