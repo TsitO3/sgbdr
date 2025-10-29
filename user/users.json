@@ -1,9 +1,12 @@
 [
     {
-        "name" : "root",
+        "name": "root",
         "password": "ttekashii",
-        "permissions": [
-            
-        ]
+        "permissions": []
+    },
+    {
+        "name": "tsito",
+        "password": "gunners",
+        "permissions": []
     }
 ]

@@ -19,6 +19,7 @@ def parse_command(command: str) -> tuple[str, list[str]]:
 
 def execute_command(action: str, args: list[str]) -> bool:
     
+    global PERMISSION
     if action == "QUIT" or action == "EXIT":
         print(f"Fermeture de {DB_NAME}.")
         return False
@@ -53,7 +54,6 @@ def execute_command(action: str, args: list[str]) -> bool:
     try:
         if action == "USE" and len(args) == 1:
             db_core.use_db(args[0])
-            global PERMISSION
             PERMISSION = get_perms()
 
         elif action == "CREATE" and len(args) >= 2:
@@ -63,6 +63,14 @@ def execute_command(action: str, args: list[str]) -> bool:
                     db_core.create_database(database_name)
                 else:
                     print("Permission non accordé.")
+            elif args[0].upper() == "USER" and args[2].upper() == "IDENTIFIED" and args[3].upper() == "BY":
+                if user.user == "root":
+                    user_name = args[1]
+                    password = args[4]
+                    user.create_new(user_name, password)
+                else:
+                    print("Permission non accordé.")
+
             elif args[0].upper() == "TABLE":
                 if PERMISSION["c"]:
                     table_name = args[1]
@@ -130,15 +138,26 @@ def execute_command(action: str, args: list[str]) -> bool:
 
 
         elif action == "SHOW" and len(args) == 1:
-            if PERMISSION["r"]:
-                if args[0].upper() == "DATABASES":
-                    db_core.show_databases()
-                elif args[0].upper() == "TABLES":
-                    db_core.show_tables()
+            if args[0].upper() == "DATABASES":
+                db_core.show_databases()
+            elif args[0].upper() == "TABLES":
+                if db_core.CURRENT_DB:
+                    print("SHOW", PERMISSION)
+                    if PERMISSION["r"]:
+                        db_core.show_tables()
+                    else:
+                        print("Permission non accordé.")
                 else:
-                    print(f" Erreur de synthaxe : SHOW TABLES/DATABASES")
+                    db_core.show_tables()        
             else:
-                print("Permission non accordé.")
+                print(f" Erreur de synthaxe : SHOW TABLES/DATABASES")
+
+
+        elif action == "SU" and len(args) == 1:
+            user.switch_user(args[0])
+            if db_core.CURRENT_DB:
+                PERMISSION = get_perms()
+
 
         elif action == "DESCRIBE" and len(args) == 1:
             if PERMISSION["r"]:
@@ -155,11 +174,11 @@ def execute_command(action: str, args: list[str]) -> bool:
     return True
 
 def get_perms():
-    create_p = user.has_permision(db_core.CURRENT_DB, "c")
-    read_p = user.has_permision(db_core.CURRENT_DB, "r")
-    delete_p = user.has_permision(db_core.CURRENT_DB, "d")
+    create_p = user.has_permission(db_core.CURRENT_DB, "c")
+    read_p = user.has_permission(db_core.CURRENT_DB, "r")
+    delete_p = user.has_permission(db_core.CURRENT_DB, "d")
     
-    return {"c": create_p, "r": read_p, "r": delete_p}
+    return {"c": create_p, "r": read_p, "d": delete_p}
 
 def start_cli():
 

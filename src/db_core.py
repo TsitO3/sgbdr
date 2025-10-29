@@ -381,7 +381,6 @@ class DBCore:
             raise Exception(f"❌ Erreur: La table {table_name} inconnue. Faites 'SHOW TABLES' pour lister les tables")
         else:
             schema = self.schemas[table_name]
-            schema = self.schemas[table_name]
             fields = schema.get('fields', [])
             
             max_col_len = max(len(f['column']) for f in fields) if fields else 10
