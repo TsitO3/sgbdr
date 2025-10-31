@@ -50,18 +50,20 @@ class User:
             except Exception as e:
                 print(e)
         else:
-            return ["ALL"]
+            return {"ALL":"ALL"}
     
 
     def has_permission(self, database : str, perm : str) -> bool:
-        if self.user_permission[0] != "ALL":
-            for base in self.user_permission:
-                permissions = base.get(database, "")
+        if self.user_permission:
+            if not self.user_permission.get("ALL", ""):
+                permissions = self.user_permission.get(database, "")
                 if perm in permissions:
                     return True
-            return False
+                return False
+            else:
+                return True
         else:
-            return True
+            return False
         
 
     def get_all_user(self):
@@ -93,7 +95,7 @@ class User:
         new =  {
             "name" : user_name,
             "password": password,
-            "permissions": []
+            "permissions": {}
         }
         all_user.append(new)
         self.write_all_user(all_user)
@@ -109,10 +111,42 @@ class User:
                 if user_password == password:
                     self.user = user_name
                     self.user_permission = self.get_permission(self.user)
+                    print(f"Connecté en tant que {self.user}")
                 return
          
 
         raise Exception(f"L utilisateur {user_name} n existe deja pas")
-        
+    
+
+    def grant_perms(self, database: str, user_name: str, permission: str, databases_list: list):
+        if self.user == "root":
+            dict_perm = {
+                "create" : "c",
+                "read" : "r",
+                "delete" : "d"
+            }
+            perm = dict_perm.get(permission,"")
+            if perm:
+                if database in databases_list:
+                    all_user = self.get_all_user()
+                    for user in all_user:
+                        name = user["name"]
+                        if name == user_name:
+                            old_perm = user["permissions"].get(database,"")
+                            print("tsitotsito")
+                            if perm not in old_perm:
+                                old_perm += perm
+                            user["permissions"][database] = old_perm
+                            print(all_user)
+                            self.write_all_user(all_user)
+                            return 
+                    print("Utilisateur non reconnu.")
+                else:
+                    raise(f"Base {database} est introuvable.")
+            else:
+                print(f"Permission {permission} non reconnu.\nLes valables sont CREATE, DELETE, READ")
+        else:
+            print("Permission non accordé. Seul l'utiisateur root peut faire ceci.")
+                
 
 user = User()

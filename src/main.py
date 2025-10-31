@@ -96,6 +96,16 @@ def execute_command(action: str, args: list[str]) -> bool:
             else:
                 print("Permission non accordé.")
         
+        elif action == "GRANT":
+            if len(args) == 5 and args[1].upper() == "ON" and args[3].upper() == "TO":
+                database_name = args[2]
+                user_name = args[4]
+                perm = args[0]
+                user.grant_perms(database_name, user_name, perm, db_core.DATABASES)
+            else:
+                print("Erreur de synthaxe. GRANT <PERMISSION> ON <DATABASE> TO <USER>.")
+            
+        
         
         elif action == "DROP" and len(args) == 2:
             if args[0].upper() == "DATABASE":
@@ -142,7 +152,6 @@ def execute_command(action: str, args: list[str]) -> bool:
                 db_core.show_databases()
             elif args[0].upper() == "TABLES":
                 if db_core.CURRENT_DB:
-                    print("SHOW", PERMISSION)
                     if PERMISSION["r"]:
                         db_core.show_tables()
                     else:
