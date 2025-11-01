@@ -8,5 +8,45 @@
         "id": 3,
         "titre": "canon",
         "datesortie": "2024"
+    },
+    {
+        "id": 6,
+        "titre": "dahalo",
+        "datesortie": "2025"
+    },
+    {
+        "id": 8,
+        "titre": "zanak'i_dadanay",
+        "datesortie": "2024"
+    },
+    {
+        "id": 11,
+        "titre": "love_story",
+        "datesortie": "2011"
+    },
+    {
+        "id": 12,
+        "titre": "azonto",
+        "datesortie": "2011"
+    },
+    {
+        "id": 13,
+        "titre": "half_man",
+        "datesortie": "2024"
+    },
+    {
+        "id": 14,
+        "titre": "danse",
+        "datesortie": "2010"
+    },
+    {
+        "id": 15,
+        "titre": "la_mano",
+        "datesortie": "2026"
+    },
+    {
+        "id": 16,
+        "titre": "demondelanuit",
+        "datesortie": "2028"
     }
 ]

@@ -46,6 +46,7 @@ def execute_command(action: str, args: list[str]) -> bool:
             "    UPDATE <nom> SET <col> = <val> WHERE <cond> Modifie des lignes.\n"
             "    DELETE FROM <nom> WHERE <cond> Supprime des lignes.\n"
             " \n"
+            "    GRANT/REVOKE <CREATE/READ/DELETE> ON <DATABASE> TO <USER>......Modifier les permmissions des utilisateurs sur une base."
         )
         print(help_message)
         return True
@@ -104,6 +105,16 @@ def execute_command(action: str, args: list[str]) -> bool:
                 user.grant_perms(database_name, user_name, perm, db_core.DATABASES)
             else:
                 print("Erreur de synthaxe. GRANT <PERMISSION> ON <DATABASE> TO <USER>.")
+
+        
+        elif action == "REVOKE":
+            if len(args) == 5 and args[1].upper() == "ON" and args[3].upper() == "TO":
+                database_name = args[2]
+                user_name = args[4]
+                perm = args[0]
+                user.revoke_perm(database_name, user_name, perm, db_core.DATABASES)
+            else:
+                print("Erreur de synthaxe. REVOKE <PERMISSION> ON <DATABASE> TO <USER>.")
             
         
         
@@ -145,6 +156,7 @@ def execute_command(action: str, args: list[str]) -> bool:
                     print("Erreur de syntaxe: SELECT * FROM <table_name>")
             else:
                 print("Permission non accordé.")
+
 
 
         elif action == "SHOW" and len(args) == 1:

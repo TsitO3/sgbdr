@@ -25,11 +25,11 @@ class DBCore:
                     self.schemas_system[table_name] = schema
             
         except FileNotFoundError:
-            print(f"⚠️ Avertissement: Le dossier de structures ({self.DB_SYSTEM}) est vide ou manquant. Aucune table chargée.")
+            print(f"Avertissement: Le dossier de structures ({self.DB_SYSTEM}) est vide ou manquant. Aucune table chargée.")
         except json.JSONDecodeError as e:
-            print(f"❌ Erreur: Fichier de schéma JSON invalide : {filename}. Détails : {e}")
+            print(f"Erreur: Fichier de schéma JSON invalide : {filename}. Détails : {e}")
         except Exception as e:
-            print(f"❌ Une erreur inattendue est survenue lors du chargement des schémas : {e}")
+            print(f"Une erreur inattendue est survenue lors du chargement des schémas : {e}")
 
         
     def load_db(self):
@@ -44,7 +44,7 @@ class DBCore:
                         databases.append(entry)
 
         except Exception as e:
-            print(f"❌ Erreur lors de la liste des bases de données: {e}")  
+            print(f"Erreur lors de la liste des bases de données: {e}")  
 
         self.DATABASES = databases
 
@@ -67,11 +67,11 @@ class DBCore:
                     self.schemas[table_name] = schema
             
         except FileNotFoundError:
-            print(f"⚠️ Avertissement: Le dossier de structures ({self.STRUCTURE_DIR}) est vide ou manquant. Aucune table chargée.")
+            print(f"Avertissement: Le dossier de structures ({self.STRUCTURE_DIR}) est vide ou manquant. Aucune table chargée.")
         except json.JSONDecodeError as e:
-            print(f"❌ Erreur: Fichier de schéma JSON invalide : {filename}. Détails : {e}")
+            print(f"Erreur: Fichier de schéma JSON invalide : {filename}. Détails : {e}")
         except Exception as e:
-            print(f"❌ Une erreur inattendue est survenue lors du chargement des schémas : {e}")
+            print(f"Une erreur inattendue est survenue lors du chargement des schémas : {e}")
 
     def use_db(self, database_name: str):
         self.CURRENT_DB = database_name
@@ -80,10 +80,10 @@ class DBCore:
         db_struct_path = os.path.join(self.STRUCTURE_DIR, database_name)
         
         if not os.path.exists(db_data_path) or not os.path.exists(db_struct_path):
-            print(f"❌ Database {database_name} introuvable")
+            print(f"Database {database_name} introuvable")
         else:
             self.load_db() 
-            print(f"✅ Connecté à la base de données '{database_name}'.")
+            print(f"Connecté à la base de données '{database_name}'.")
 
     def _get_schema_path(self, table_name: str) -> str:
         filename = f"{table_name}_schema.json"
@@ -97,11 +97,11 @@ class DBCore:
         
     def _read_data(self, table_name: str) -> list:
         if not self.CURRENT_DB:
-            raise Exception("❌ Erreur: Aucune base de données sélectionnée pour lire les données.")
+            raise Exception("Erreur: Aucune base de données sélectionnée pour lire les données.")
         elif not table_name:
             raise ValueError("Le nom de la table ne peut pas être vide.")
         elif table_name not in self.schemas:
-            raise Exception(f"❌ Erreur: La table {table_name} inconnue. Faites 'SHOW TABLES' pour lister les tables")
+            raise Exception(f"Erreur: La table {table_name} inconnue. Faites 'SHOW TABLES' pour lister les tables")
 
         try:
             data_path = self._get_data_path(table_name)
@@ -118,12 +118,12 @@ class DBCore:
             return []
             
         except json.JSONDecodeError:
-            print(f"❌ Erreur: Le fichier de données de la table '{table_name}' est corrompu (JSON invalide).")
+            print(f"Erreur: Le fichier de données de la table '{table_name}' est corrompu (JSON invalide).")
             raise
         
     def _write_data(self, table_name: str, data: list):
         if not self.CURRENT_DB:
-            raise Exception("❌ Erreur: Aucune base de données sélectionnée pour écrire les données.")
+            raise Exception("Erreur: Aucune base de données sélectionnée pour écrire les données.")
 
         try:
             data_path = self._get_data_path(table_name)
@@ -133,10 +133,10 @@ class DBCore:
                 
             
         except FileNotFoundError:
-            print(f"❌ Erreur critique: Impossible de trouver ou de créer le chemin pour écrire les données : {data_path}")
+            print(f"Erreur critique: Impossible de trouver ou de créer le chemin pour écrire les données : {data_path}")
             raise
         except Exception as e:
-            print(f"❌ Erreur lors de l'écriture des données de la table '{table_name}' : {e}")
+            print(f"Erreur lors de l'écriture des données de la table '{table_name}' : {e}")
             raise
 
     
@@ -149,24 +149,24 @@ class DBCore:
         
         
         if database_name in self.DATABASES:
-            raise ValueError(f"❌ Erreur: La base de données '{database_name}' existe déjà.")
+            raise ValueError(f"Erreur: La base de données '{database_name}' existe déjà.")
 
         try:
             os.makedirs(db_data_path)
             os.makedirs(db_struct_path)
             
-            print(f"✅ Base de données '{database_name}' créée avec succès.")
+            print(f"Base de données '{database_name}' créée avec succès.")
             self.load_db()
 
         except Exception as e:
-            print(f"❌ Erreur lors de la création des dossiers de la base de données : {e}")
+            print(f"Erreur lors de la création des dossiers de la base de données : {e}")
             if os.path.exists(db_data_path): os.rmdir(db_data_path)
             if os.path.exists(db_struct_path): os.rmdir(db_struct_path)
             raise
         
     def show_tables(self):
         if not self.CURRENT_DB:
-            print("❌ Erreur: Aucune base de données sélectionnée. Utilisez la commande 'USE <db_name>'.")
+            print("Erreur: Aucune base de données sélectionnée. Utilisez la commande 'USE <db_name>'.")
             return
         
         if not self.schemas:
@@ -253,13 +253,13 @@ class DBCore:
 
     def create_table(self, table_name: str, fields_def: list):
         if not self.CURRENT_DB:
-            raise Exception("❌ Erreur: Aucune base de données sélectionnée. Utilisez 'USE <db_name>' avant de créer une table.")
+            raise Exception("Erreur: Aucune base de données sélectionnée. Utilisez 'USE <db_name>' avant de créer une table.")
 
         if not table_name:
             raise ValueError("Le nom de la table ne peut pas être vide.")
         
         if table_name in self.schemas.keys():
-            raise ValueError(f"❌ Erreur: La table '{table_name}' existe déjà dans la base de données '{self.CURRENT_DB}'.")
+            raise ValueError(f"Erreur: La table '{table_name}' existe déjà dans la base de données '{self.CURRENT_DB}'.")
             
         VALID_TYPES = ["integer", "string", "float", "boolean"]
         
@@ -364,21 +364,21 @@ class DBCore:
             with open(data_path, 'w', encoding='utf-8') as f:
                 json.dump([], f, indent=4, ensure_ascii=False)
                 
-            print(f"✅ Table '{table_name}' créée avec succès dans la base de données '{self.CURRENT_DB}'.")
+            print(f"Table '{table_name}' créée avec succès dans la base de données '{self.CURRENT_DB}'.")
 
             self.load_db()
             
         except Exception as e:
-            print(f"❌ Erreur lors de la sauvegarde de la table : {e}")
+            print(f"Erreur lors de la sauvegarde de la table : {e}")
             raise
 
     def describe_table(self, table_name):
         if not self.CURRENT_DB:
-            raise Exception("❌ Erreur: Aucune base de données sélectionnée pour lire les données.")
+            raise Exception("Erreur: Aucune base de données sélectionnée pour lire les données.")
         elif not table_name:
             raise ValueError("Le nom de la table ne peut pas être vide.")
         elif table_name not in self.schemas:
-            raise Exception(f"❌ Erreur: La table {table_name} inconnue. Faites 'SHOW TABLES' pour lister les tables")
+            raise Exception(f"Erreur: La table {table_name} inconnue. Faites 'SHOW TABLES' pour lister les tables")
         else:
             schema = self.schemas[table_name]
             fields = schema.get('fields', [])
@@ -452,7 +452,7 @@ class DBCore:
             raise
             
         except json.JSONDecodeError:
-            print(f"❌ Erreur: Le fichier de données de la table '{table_name}' est corrompu (JSON invalide).")
+            print(f"Erreur: Le fichier de données de la table '{table_name}' est corrompu (JSON invalide).")
             raise
 
         tmp_db = self.CURRENT_DB
@@ -464,22 +464,25 @@ class DBCore:
 
     def insert_data(self, table_name: str, listvalues: list, flag: bool = False):
         if not self.CURRENT_DB:
-            raise Exception("❌ Erreur: Aucune base de données sélectionnée (USE DB).")
+            raise Exception("Erreur: Aucune base de données sélectionnée (USE DB).")
 
         if table_name not in self.schemas:
-            raise ValueError(f"❌ Erreur: La table '{table_name}' n'existe pas ou n'est pas chargée.")
+            raise ValueError(f"Erreur: La table '{table_name}' n'existe pas ou n'est pas chargée.")
             
         schema = self.schemas[table_name]
         records = self._read_data(table_name)
 
         counter = 0
+        new_records = []
         for values in listvalues:
             new_record = {}
             counter += 1
             values = values.split(":")
+            for v in values:
+                v.replace('_', '')
 
             if len(values) > len(schema['fields']):
-                raise ValueError(f"❌ Erreur: Trop de valeurs fournies. Attendu: {len(schema['fields'])} champs.")
+                raise ValueError(f"Erreur: Trop de valeurs fournies. Attendu: {len(schema['fields'])} champs.")
 
             for i, field in enumerate(schema['fields']):
                 column_name = field['column']
@@ -498,17 +501,17 @@ class DBCore:
                         new_id = values[i]
                     for record in records:
                         if record[column_name] == new_id:
-                            raise ValueError(f"❌ Erreur de contrainte: La valeur '{new_id}' est déjà utilisée pour la clé primaire.")
+                            raise ValueError(f"Erreur de contrainte: La valeur '{new_id}' est déjà utilisée pour la clé primaire.")
                     new_record[column_name] = new_id
 
                 else:
 
                     if values[i] != "":
-                        value = values[i]
+                        value = values[i].replace('_',' ')
                         if not self._validate_type(value, expected_type):
                             determined_type = type(value).__name__
                             raise TypeError(
-                                f"❌ Erreur de type pour la colonne '{column_name}'. Valeur '{value}' (Type: {determined_type}) "
+                                f"Erreur de type pour la colonne '{column_name}'. Valeur '{value}' (Type: {determined_type}) "
                                 f"n'est pas valide pour le type attendu: '{expected_type}'."
                             )
 
@@ -521,22 +524,23 @@ class DBCore:
                         new_record[column_name] = value
 
             
-            records = self._read_data(table_name)
-            records.append(new_record)
+            new_records.append(new_record)
+        records = self._read_data(table_name)
+        records.extend(new_records)
         self._write_data(table_name, records)
         
         if not flag:
-            print(f"✅ Insertion réussie dans '{table_name}'. {counter} Enregistrement ajouté.")
+            print(f"Insertion réussie dans '{table_name}'. {counter} Enregistrement ajouté.")
         
 
     def drop_table(self, table_name: str):
         if not self.CURRENT_DB:
-            raise Exception("❌ Erreur: Aucune base de données sélectionnée (USE DB).")
+            raise Exception("Erreur: Aucune base de données sélectionnée (USE DB).")
 
         if table_name not in self.schemas:
-            raise ValueError(f"❌ Erreur: La table '{table_name}' n'existe pas dans la base de données '{self.CURRENT_DB}'.")
+            raise ValueError(f"Erreur: La table '{table_name}' n'existe pas dans la base de données '{self.CURRENT_DB}'.")
 
-        print(f"⚠️ AVERTISSEMENT: Toutes les données de la table '{table_name}' seront DÉFINITIVEMENT supprimées.")
+        print(f"AVERTISSEMENT: Toutes les données de la table '{table_name}' seront DÉFINITIVEMENT supprimées.")
         confirmation = input("Êtes-vous sûr de vouloir supprimer cette table et ses enregistrements ? (oui/non) : ").lower()
 
         if confirmation != 'oui':
@@ -558,22 +562,22 @@ class DBCore:
 
             self.load_db()
 
-            print(f"✅ Table '{table_name}' supprimée avec succès.")
+            print(f"Table '{table_name}' supprimée avec succès.")
 
         except Exception as e:
-            print(f"❌ Erreur lors de la suppression de la table '{table_name}': {e}")
+            print(f"Erreur lors de la suppression de la table '{table_name}': {e}")
             raise
 
 
     def drop_database(self, database_name: str):
 
         if database_name not in self.DATABASES:
-            raise ValueError(f"❌ Erreur: La table '{database_name}' n'existe pas dans la base de données '{self.CURRENT_DB}'.")
+            raise ValueError(f"Erreur: La table '{database_name}' n'existe pas dans la base de données '{self.CURRENT_DB}'.")
 
         schema_list =  os.listdir(os.path.join(self.STRUCTURE_DIR,database_name))
                 
         if schema_list:
-            print(f"⚠️ AVERTISSEMENT: Toutes les données de la base '{database_name}' seront DÉFINITIVEMENT supprimées.")
+            print(f"AVERTISSEMENT: Toutes les données de la base '{database_name}' seront DÉFINITIVEMENT supprimées.")
             confirmation = input("Êtes-vous sûr de vouloir supprimer cette base et ses enregistrements ? (oui/non) : ").lower()
 
             if confirmation != 'oui':
@@ -595,7 +599,7 @@ class DBCore:
             """Mettre les actions pour les 
             metadonnées plust tard"""
 
-            print(f"✅ Database '{database_name}' supprimée avec succès.")
+            print(f"Database '{database_name}' supprimée avec succès.")
             
             if database_name == self.CURRENT_DB:
                 self.CURRENT_DB = None
@@ -603,7 +607,7 @@ class DBCore:
 
 
         except Exception as e:
-            print(f"❌ Erreur lors de la suppression de la database '{database_name}': {e}")
+            print(f"Erreur lors de la suppression de la database '{database_name}': {e}")
             raise
 
 
@@ -684,11 +688,11 @@ class DBCore:
 
     def select_data(self, table_name: str, condition_list: str = None, columns: str = "*"):
         if not self.CURRENT_DB:
-            print("❌ Erreur: Aucune base de données sélectionnée.")
+            print("Erreur: Aucune base de données sélectionnée.")
             return
 
         if table_name not in self.schemas:
-            print(f"❌ Erreur: La table '{table_name}' n'existe pas.")
+            print(f"Erreur: La table '{table_name}' n'existe pas.")
             return
         all_records = self._read_data(table_name)
         if condition_list:
@@ -719,7 +723,7 @@ class DBCore:
                                 if self._evaluate_condition(record, parts)
                             ]
                         except ValueError as e:
-                            print(f"❌ Erreur de syntaxe de la condition WHERE : {e}")
+                            print(f"Erreur de syntaxe de la condition WHERE : {e}")
                             return
                     else:
                         filtered_records = starting_records
@@ -739,7 +743,7 @@ class DBCore:
                                 if self._evaluate_condition(record, parts)
                             ]
                         except ValueError as e:
-                            print(f"❌ Erreur de syntaxe de la condition WHERE : {e}")
+                            print(f"Erreur de syntaxe de la condition WHERE : {e}")
                             return
                     else:
                         result = starting_records
@@ -779,11 +783,11 @@ class DBCore:
         
     def delete_data(self, table_name, condition_list):
         if not self.CURRENT_DB:
-            print("❌ Erreur: Aucune base de données sélectionnée.")
+            print("Erreur: Aucune base de données sélectionnée.")
             return
 
         if table_name not in self.schemas:
-            print(f"❌ Erreur: La table '{table_name}' n'existe pas.")
+            print(f"Erreur: La table '{table_name}' n'existe pas.")
             return
         
         all_records = self._read_data(table_name)
@@ -814,7 +818,7 @@ class DBCore:
                                 if self._evaluate_condition(record, parts)
                             ]
                         except ValueError as e:
-                            print(f"❌ Erreur de syntaxe de la condition WHERE : {e}")
+                            print(f"Erreur de syntaxe de la condition WHERE : {e}")
                             return
                     else:
                         filtered_records = starting_records
@@ -834,7 +838,7 @@ class DBCore:
                                 if self._evaluate_condition(record, parts)
                             ]
                         except ValueError as e:
-                            print(f"❌ Erreur de syntaxe de la condition WHERE : {e}")
+                            print(f"Erreur de syntaxe de la condition WHERE : {e}")
                             return
                     else:
                         result = starting_records

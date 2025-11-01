@@ -8,7 +8,8 @@
         "name": "tsito",
         "password": "gunners",
         "permissions": {
-            "musics": "rc"
+            "musics": "r",
+            "auto": "r"
         }
     }
 ]

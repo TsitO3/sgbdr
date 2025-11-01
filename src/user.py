@@ -119,34 +119,69 @@ class User:
     
 
     def grant_perms(self, database: str, user_name: str, permission: str, databases_list: list):
-        if self.user == "root":
-            dict_perm = {
-                "create" : "c",
-                "read" : "r",
-                "delete" : "d"
-            }
-            perm = dict_perm.get(permission,"")
-            if perm:
-                if database in databases_list:
-                    all_user = self.get_all_user()
-                    for user in all_user:
-                        name = user["name"]
-                        if name == user_name:
-                            old_perm = user["permissions"].get(database,"")
-                            print("tsitotsito")
-                            if perm not in old_perm:
-                                old_perm += perm
-                            user["permissions"][database] = old_perm
-                            print(all_user)
-                            self.write_all_user(all_user)
-                            return 
-                    print("Utilisateur non reconnu.")
-                else:
-                    raise(f"Base {database} est introuvable.")
-            else:
-                print(f"Permission {permission} non reconnu.\nLes valables sont CREATE, DELETE, READ")
-        else:
+
+        if self.user != "root":
             print("Permission non accordé. Seul l'utiisateur root peut faire ceci.")
+            return 
+
+        dict_perm = {
+            "create" : "c",
+            "read" : "r",
+            "delete" : "d"
+        }
+        perm = dict_perm.get(permission,"")
+
+        if not perm:
+            print(f"Permission {permission} non reconnu.\nLes valables sont CREATE, DELETE, READ")
+            return
+
+
+        if database not in databases_list:
+            raise(f"Base {database} est introuvable.")
+
+        all_user = self.get_all_user()
+        for user in all_user:
+            name = user["name"]
+            if name == user_name:
+                old_perm = user["permissions"].get(database,"")
+                if perm not in old_perm:
+                    old_perm += perm
+                user["permissions"][database] = old_perm
+                self.write_all_user(all_user)
+                return 
+        print("Utilisateur non reconnu.")
                 
+
+
+    def revoke_perm(self, database: str, user_name: str, permission: str, databases_list: list):
+        if self.user != "root":
+            print("Permission non accordé. Seul l'utiisateur root peut faire ceci.")
+            return 
+
+        dict_perm = {
+            "create" : "c",
+            "read" : "r",
+            "delete" : "d"
+        }
+        perm = dict_perm.get(permission,"")
+
+        if not perm:
+            print(f"Permission {permission} non reconnu.\nLes valables sont CREATE, DELETE, READ")
+            return
+
+        if database not in databases_list:
+            raise(f"Base {database} est introuvable.")
+
+        all_user = self.get_all_user()
+        for user in all_user:
+            name = user["name"]
+            if name == user_name:
+                old_perm = user["permissions"].get(database,"")
+                old_perm = old_perm.replace(perm, '')
+                user["permissions"][database] = old_perm
+                self.write_all_user(all_user)
+                return 
+        print("Utilisateur non reconnu.")
+
 
 user = User()
