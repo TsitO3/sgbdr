@@ -1,0 +1,28 @@
+{
+    "name": "songs",
+    "fields": [
+        {
+            "column": "id",
+            "type": "integer",
+            "primary_key": true,
+            "required": true,
+            "auto_increment": true
+        },
+        {
+            "column": "title",
+            "type": "string",
+            "default": "half_man",
+            "required": true
+        },
+        {
+            "column": "singer",
+            "type": "string"
+        },
+        {
+            "column": "datesortie",
+            "type": "string",
+            "default": "2025",
+            "required": true
+        }
+    ]
+}

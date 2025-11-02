@@ -572,7 +572,7 @@ class DBCore:
     def drop_database(self, database_name: str):
 
         if database_name not in self.DATABASES:
-            raise ValueError(f"Erreur: La table '{database_name}' n'existe pas dans la base de données '{self.CURRENT_DB}'.")
+            raise ValueError(f"Erreur: La base '{database_name}' n'existe pas .")
 
         schema_list =  os.listdir(os.path.join(self.STRUCTURE_DIR,database_name))
                 
@@ -707,7 +707,6 @@ class DBCore:
             result = []
             for i,cond in enumerate(conds_list):
                 if i != 0:
-                    print(f"i = {i} et i-1 = {i-1}")
                     if logical_operands[i-1].lower() == "or":
                         starting_records = all_records
                     elif logical_operands[i-1].lower() == "and":
@@ -715,6 +714,8 @@ class DBCore:
                     if cond:
                         keys = starting_records[0].keys()
                         parts = cond.split(":")
+                        if len(parts) != 3:
+                            raise SyntaxError(f"Synthaxe de condition incorrect: <column>:<operateur>:<value>")
                         if parts[0] not in keys:
                             raise ValueError(f"Colonne inconnu: {parts[0]}.")
                         try:
@@ -735,6 +736,8 @@ class DBCore:
                     if cond:
                         keys = starting_records[0].keys()
                         parts = cond.split(":")
+                        if len(parts) != 3:
+                            raise SyntaxError(f"Synthaxe de condition incorrect: <column>:<operateur>:<value>")
                         if parts[0] not in keys:
                             raise ValueError(f"Colonne inconnu: {parts[0]}.")
                         try:
@@ -777,9 +780,7 @@ class DBCore:
         
 
 
-    def update_data(self, table_name, update_clause):
-        # Modifie les enregistrements correspondant à la clause WHERE
-        pass
+
         
     def delete_data(self, table_name, condition_list):
         if not self.CURRENT_DB:
@@ -810,6 +811,8 @@ class DBCore:
                     if cond:
                         keys = starting_records[0].keys()
                         parts = cond.split(":")
+                        if len(parts) != 3:
+                            raise SyntaxError(f"Synthaxe de condition incorrect: <column>:<operateur>:<value>")
                         if parts[0] not in keys:
                             raise ValueError(f"Colonne inconnu: {parts[0]}.")
                         try:
@@ -830,6 +833,8 @@ class DBCore:
                     if cond:
                         keys = starting_records[0].keys()
                         parts = cond.split(":")
+                        if len(parts) != 3:
+                            raise SyntaxError(f"Synthaxe de condition incorrect: <column>:<operateur>:<value>")
                         if parts[0] not in keys:
                             raise ValueError(f"Colonne inconnu: {parts[0]}.")
                         try:
@@ -849,6 +854,108 @@ class DBCore:
             self._write_data(table_name, new_data)
         else:
             self._write_data(table_name, [])
+
+
+    def update_data(self, table_name: str, new_value: str, condition_list: list):
+        if not self.CURRENT_DB:
+            print("Erreur: Aucune base de données sélectionnée.")
+            return
+
+        if table_name not in self.schemas:
+            print(f"Erreur: La table '{table_name}' n'existe pas.")
+            return
+        
+        val_list = new_value.split('=')
+        if len(val_list) != 2:
+            print("Erreur de syntaxe.")
+            return
+
+        col = val_list[0]
+        value = val_list[1]
+
+
+        schema = self.schemas[table_name]
+        fields = schema["fields"]
+        for f in fields:
+            col_name = f["column"]
+            if col_name == col:
+                col_type = f["type"]
+                pk = f.get("primary_key", False)
+                if pk:
+                   print("Le clé primaire ne peut pas etre chagé.")
+                   return
+
+                if not self._validate_type(value, col_type):
+                    print(f"La colonne {col} doit être de type {col_type}.")
+                    return
+                
+                all_records = self._read_data(table_name)
+                if condition_list:
+
+                    if len(condition_list) % 2 == 0:
+                        raise SyntaxError(f"Les conditions sont manquant. voir 'HELP'")
+
+                    conds_list = condition_list[::2]
+                    logical_operands = condition_list[1::2]
+
+                    starting_records = all_records
+                    result = []
+                    for i,cond in enumerate(conds_list):
+                        if i != 0:
+                            if logical_operands[i-1].lower() == "or":
+                                starting_records = all_records
+                            elif logical_operands[i-1].lower() == "and":
+                                starting_records = result
+                            if cond:
+                                keys = starting_records[0].keys()
+                                parts = cond.split(":")
+                                if len(parts) != 3:
+                                    raise SyntaxError(f"Synthaxe de condition incorrect: <column>:<operateur>:<value>")
+                                
+                                if parts[0] not in keys:
+                                    raise ValueError(f"Colonne inconnu: {parts[0]}.")
+                                try:
+                                    filtered_records = [
+                                        record for record in starting_records 
+                                        if self._evaluate_condition(record, parts)
+                                    ]
+                                except ValueError as e:
+                                    print(f"Erreur de syntaxe de la condition WHERE : {e}")
+                                    return
+                            else:
+                                filtered_records = starting_records
+                            if logical_operands[i-1].lower() == "or":
+                                result.extend(filtered_records)
+                            elif logical_operands[i-1].lower() == "and":
+                                result = filtered_records
+                        else:
+                            if cond:
+                                keys = starting_records[0].keys()
+                                parts = cond.split(":")
+                                if len(parts) != 3:
+                                    raise SyntaxError(f"Synthaxe de condition incorrect: <column>:<operateur>:<value>")
+                                if parts[0] not in keys:
+                                    raise ValueError(f"Colonne inconnu: {parts[0]}.")
+                                try:
+                                    result = [
+                                        record for record in starting_records 
+                                        if self._evaluate_condition(record, parts)
+                                    ]
+                                except ValueError as e:
+                                    print(f"Erreur de syntaxe de la condition WHERE : {e}")
+                                    return
+                            else:
+                                result = starting_records
+                else:
+                    result = all_records
+                
+                for record in all_records:
+                    if record in result:
+                        record[col] = value
+                self._write_data(table_name, all_records)
+                return
+                           
+        raise("Colonne {col} inconnu.")
 
 
 

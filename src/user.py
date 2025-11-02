@@ -101,6 +101,7 @@ class User:
         self.write_all_user(all_user)
         print(f"Utilisatuer {user_name} cree.")
 
+
     def switch_user(self, user_name: str):
         all_user = self.get_all_user()
         for user in all_user:
@@ -127,7 +128,8 @@ class User:
         dict_perm = {
             "create" : "c",
             "read" : "r",
-            "delete" : "d"
+            "delete" : "d",
+            "update" : "u"
         }
         perm = dict_perm.get(permission,"")
 
@@ -148,6 +150,7 @@ class User:
                     old_perm += perm
                 user["permissions"][database] = old_perm
                 self.write_all_user(all_user)
+                print(f"Permission {perm} sur {database} accordé à {user_name}")
                 return 
         print("Utilisateur non reconnu.")
                 
@@ -180,6 +183,7 @@ class User:
                 old_perm = old_perm.replace(perm, '')
                 user["permissions"][database] = old_perm
                 self.write_all_user(all_user)
+                print(f"Permission {perm} sur {database} enlevé à {user_name}")
                 return 
         print("Utilisateur non reconnu.")
 

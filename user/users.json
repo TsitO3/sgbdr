@@ -11,5 +11,12 @@
             "musics": "r",
             "auto": "r"
         }
+    },
+    {
+        "name": "fitahina",
+        "password": "cristiano",
+        "permissions": {
+            "perms": "rcd"
+        }
     }
 ]

@@ -36,6 +36,8 @@ def execute_command(action: str, args: list[str]) -> bool:
             "    DROP DATABASE <nom> ...........Supprimer une database.\n"
             "    USE <db_name> ........... Sélectionne la base de données active.\n"
             " \n"
+            "    UPDATE <TABLE_NAME> SET <COLUMN=VALUE> ALL"
+            "    UPDATE <TABLE_NAME> SET <COLUMN=VALUE> WHERE <CONDITION>"
             "    SHOW TABLES ............. Liste toutes les tables de la DB active.\n"
             "    DESCRIBE <table_name> ......Liste toutes les champq de la table.\n"
             "    DROP TABLE <nom> ...........Supprimer une table.\n"
@@ -47,6 +49,7 @@ def execute_command(action: str, args: list[str]) -> bool:
             "    DELETE FROM <nom> WHERE <cond> Supprime des lignes.\n"
             " \n"
             "    GRANT/REVOKE <CREATE/READ/DELETE> ON <DATABASE> TO <USER>......Modifier les permmissions des utilisateurs sur une base."
+            "    CREATE USER <USERNAME> IDENTIFIED BY <PASSWORD>......Créer un nouveau utilisateur."
         )
         print(help_message)
         return True
@@ -73,29 +76,56 @@ def execute_command(action: str, args: list[str]) -> bool:
                     print("Permission non accordé.")
 
             elif args[0].upper() == "TABLE":
-                if PERMISSION["c"]:
-                    table_name = args[1]
-                    fields_def = args[2:]
-                    db_core.create_table(table_name, fields_def)
+                
+                if db_core.CURRENT_DB:
+                    if PERMISSION["c"]:
+                        table_name = args[1]
+                        fields_def = args[2:]
+                        db_core.create_table(table_name, fields_def)
+                    else:
+                        print("Permission non accordé.")
                 else:
-                    print("Permission non accordé.")
+                    print("Erreur: Aucune base de données sélectionnée.")
             else:
                 print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
         
 
         elif action == "DELETE":
-            if PERMISSION["d"]:
-                if len(args) == 3 and args[0] == "*" and args[1].upper() == "FROM":
-                    table_name = args[2]
-                    db_core.delete_data(table_name, "")
-                elif len(args)>3 and args[0].upper() == "FROM" and args[2].upper() == "WHERE":
-                    table_name = args[1]
-                    condition = args[3:]
-                    db_core.delete_data(table_name, condition)
+            if db_core.CURRENT_DB:
+                if PERMISSION["d"]:
+                    if len(args) == 3 and args[0] == "*" and args[1].upper() == "FROM":
+                        table_name = args[2]
+                        db_core.delete_data(table_name, "")
+                    elif len(args)>3 and args[0].upper() == "FROM" and args[2].upper() == "WHERE":
+                        table_name = args[1]
+                        condition = args[3:]
+                        db_core.delete_data(table_name, condition)
+                    else:
+                        print("Errreur de synthaxe : DELETE * FROM <TABLE> or DELETE FROM <TABLE> WHERE <CONDITION>")
                 else:
-                    print("Errreur de synthaxe : DELETE * FROM <TABLE> or DELETE FROM <TABLE> WHERE <CONDITION>")
+                    print("Permission non accordé.")
             else:
-                print("Permission non accordé.")
+                    print("Erreur: Aucune base de données sélectionnée.")
+
+        elif action == "UPDATE":
+            if db_core.CURRENT_DB:
+                if PERMISSION["u"]:
+                    if len(args) == 4 and args[1].upper() == "SET" and args[3].upper() == "ALL":
+                        table_name = args[0]
+                        new_value = args[2]
+                        db_core.update_data(table_name, new_value, "")
+                    elif len(args) >= 4 and args[1].upper() == "SET" and args[3].upper() == "WHERE":
+                        table_name = args[0]
+                        new_value = args[2]
+                        condition = args[4:]
+                        db_core.update_data(table_name, new_value, condition)
+                    else:
+                        print("Errreur de synthaxe : DELETE * FROM <TABLE> or DELETE FROM <TABLE> WHERE <CONDITION>")
+                else:
+                    print("Permission non accordé.")
+            else:
+                    print("Erreur: Aucune base de données sélectionnée.")
+
         
         elif action == "GRANT":
             if len(args) == 5 and args[1].upper() == "ON" and args[3].upper() == "TO":
@@ -126,37 +156,48 @@ def execute_command(action: str, args: list[str]) -> bool:
                 else:
                     print("Permission non accordé.")
             elif args[0].upper() == "TABLE":
-                if PERMISSION["d"]:
-                    table_name = args[1]
-                    db_core.drop_table(table_name)
+                if db_core.CURRENT_DB:
+
+                    if PERMISSION["d"]:
+                        table_name = args[1]
+                        db_core.drop_table(table_name)
+                    else:
+                        print("Permission non accordé.")
                 else:
-                    print("Permission non accordé.")
+                    print("Erreur: Aucune base de données sélectionnée.")
             else:
                 print(f"Erreur de synthaxe : DROP TABLE/DATABASE <DATABASENAME/TABLENAME>")
 
 
         elif action == "INSERT" and len(args) >= 3 and args[0].upper() == "INTO":
-            if PERMISSION["c"]:
-                table_name = args[1]
-                values = args[2:]
-                db_core.insert_data(table_name, values)
+            if db_core.CURRENT_DB:
+
+                if PERMISSION["c"]:
+                    table_name = args[1]
+                    values = args[2:]
+                    db_core.insert_data(table_name, values)
+                else:
+                    print("Permission non accordé.")
             else:
-                print("Permission non accordé.")
+                print("Erreur: Aucune base de données sélectionnée.")
 
         elif action == "SELECT":
-            if PERMISSION["r"]:
-                if len(args) == 3 and args[1].upper() == "FROM":
-                    table_name = args[2]
-                    db_core.select_data(table_name, "", args[0])
-                elif len(args) >= 5  and args[1].upper() == "FROM" and args[3].upper() == "WHERE":
-                    condition = args[4:]
-                    table_name = args[2]
-                    db_core.select_data(table_name, condition, args[0])
-                else:
-                    print("Erreur de syntaxe: SELECT * FROM <table_name>")
-            else:
-                print("Permission non accordé.")
+            if db_core.CURRENT_DB:
 
+                if PERMISSION["r"]:
+                    if len(args) == 3 and args[1].upper() == "FROM":
+                        table_name = args[2]
+                        db_core.select_data(table_name, "", args[0])
+                    elif len(args) >= 5  and args[1].upper() == "FROM" and args[3].upper() == "WHERE":
+                        condition = args[4:]
+                        table_name = args[2]
+                        db_core.select_data(table_name, condition, args[0])
+                    else:
+                        print("Erreur de syntaxe: SELECT * FROM <table_name>")
+                else:
+                    print("Permission non accordé.")
+            else:
+                print("Erreur: Aucune base de données sélectionnée.")
 
 
         elif action == "SHOW" and len(args) == 1:
@@ -181,11 +222,14 @@ def execute_command(action: str, args: list[str]) -> bool:
 
 
         elif action == "DESCRIBE" and len(args) == 1:
-            if PERMISSION["r"]:
-                db_core.describe_table(args[0])
-            else:
-                print("Permission non accordé.")
+            if db_core.CURRENT_DB:
 
+                if PERMISSION["r"]:
+                    db_core.describe_table(args[0])
+                else:
+                    print("Permission non accordé.")
+            else:
+                print("Erreur: Aucune base de données sélectionnée.")
         else:
             print(f" Erreur: Commande non reconnue ou syntaxe incorrecte: {action}")
 
@@ -198,8 +242,9 @@ def get_perms():
     create_p = user.has_permission(db_core.CURRENT_DB, "c")
     read_p = user.has_permission(db_core.CURRENT_DB, "r")
     delete_p = user.has_permission(db_core.CURRENT_DB, "d")
+    update_p = user.has_permission(db_core.CURRENT_DB, "u")
     
-    return {"c": create_p, "r": read_p, "d": delete_p}
+    return {"c": create_p, "r": read_p, "d": delete_p, "u":update_p}
 
 def start_cli():
 
