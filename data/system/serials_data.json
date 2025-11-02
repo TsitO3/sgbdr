@@ -2,7 +2,7 @@
     {
         "id": 1,
         "nomtable": "serials",
-        "value": "5"
+        "value": "7"
     },
     {
         "id": 2,
@@ -18,5 +18,10 @@
         "id": 4,
         "nomtable": "songs",
         "value": "7"
+    },
+    {
+        "id": 6,
+        "nomtable": "players",
+        "value": "4"
     }
 ]

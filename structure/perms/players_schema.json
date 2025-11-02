@@ -1,0 +1,26 @@
+{
+    "name": "players",
+    "fields": [
+        {
+            "column": "id",
+            "type": "integer",
+            "primary_key": true,
+            "required": true,
+            "auto_increment": true
+        },
+        {
+            "column": "license",
+            "type": "integer"
+        },
+        {
+            "column": "name",
+            "type": "string",
+            "default": "sansnom",
+            "required": true
+        },
+        {
+            "column": "club",
+            "type": "string"
+        }
+    ]
+}

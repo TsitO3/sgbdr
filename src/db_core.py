@@ -269,7 +269,8 @@ class DBCore:
         }
         
         pk_count = 0 
-        
+        flag = False
+
         for field_str in fields_def:
             parts = field_str.lower().split(':')
             
@@ -305,17 +306,7 @@ class DBCore:
                     raise ValueError("L'auto-incrément ne peut être appliqué qu'à un type 'integer'.")
                 field_definition["auto_increment"] = True
 
-
-                tmp_schemas = self.schemas
-                tmp_db = self.CURRENT_DB
-
-                self.CURRENT_DB = self.DB_SYSTEM
-                self.schemas = self.schemas_system
-
-                self.insert_data("serials", [f":{table_name}:2"], True)
-
-                self.CURRENT_DB = tmp_db
-                self.schemas = tmp_schemas
+                flag = True
 
             
             is_required = 'notnull' in parts or 'required' in parts
@@ -365,6 +356,17 @@ class DBCore:
                 json.dump([], f, indent=4, ensure_ascii=False)
                 
             print(f"Table '{table_name}' créée avec succès dans la base de données '{self.CURRENT_DB}'.")
+            
+            tmp_schemas = self.schemas
+            tmp_db = self.CURRENT_DB
+
+            self.CURRENT_DB = self.DB_SYSTEM
+            self.schemas = self.schemas_system
+
+            self.insert_data("serials", [f":{table_name}:2"], True)
+
+            self.CURRENT_DB = tmp_db
+            self.schemas = tmp_schemas
 
             self.load_db()
             
@@ -956,6 +958,113 @@ class DBCore:
                 return
                            
         raise("Colonne {col} inconnu.")
+    
+
+    def add_column(self, table_name: str, fields_def:list):
+        if not self.CURRENT_DB:
+            raise Exception("Erreur: Aucune base de données sélectionnée. Utilisez 'USE <db_name>' avant de créer une table.")
+        
+        if table_name not in self.schemas.keys():
+            raise ValueError(f"Erreur: La table '{table_name}' n'existe pas dans la base de données '{self.CURRENT_DB}'.")
+            
+        VALID_TYPES = ["integer", "string", "float", "boolean"]
+        
+        new_fields = []
+        
+        pk_count = 0
+        flag = False
+        schema = self.schemas[table_name]
+
+        for col in schema:
+            if col.get("primary_key"):
+                pk_count = 1
+                break
+        
+        for field_str in fields_def:
+            parts = field_str.lower().split(':')
+            
+            if len(parts) < 2:
+                raise ValueError(f"Définition de champ invalide : {field_str}. Format attendu: nom:type.")
+            
+            column_name = parts[0]
+            column_type = parts[1]
+
+            print(schema)
+            break
+            if column_name in schema:
+                raise ValueError(f"Le colonne {column_name} existe déja dans la table {table_name}.")
+
+            if column_type not in VALID_TYPES:
+                raise ValueError(f"Type de donnée non valide '{column_type}' pour la colonne '{column_name}'. Types valides: {', '.join(VALID_TYPES)}")
+
+            field_definition = {
+                "column": column_name,
+                "type": column_type
+            }
+
+            is_pk = 'pk' in parts or 'primary_key' in parts
+            is_auto = 'auto' in parts or 'auto_increment' in parts
+            
+            if is_pk:
+                pk_count += 1
+                if pk_count > 1:
+                    raise ValueError(f"Une seule clé primaire (PK) est autorisée par table. Problème avec '{column_name}', executer DERCRIBE <TABLE_NAME>.")
+                
+                field_definition["primary_key"] = True
+                field_definition["required"] = True
+            
+            if is_auto:
+                if not is_pk:
+                    raise ValueError(f"L'auto-incrément nécessite que le champ '{column_name}' soit une clé primaire (PK).")
+                if column_type != 'integer':
+                    raise ValueError("L'auto-incrément ne peut être appliqué qu'à un type 'integer'.")
+                field_definition["auto_increment"] = True
+
+                flag = True
+
+            
+            is_required = 'notnull' in parts or 'required' in parts
+            
+            default_value = None
+            for part in parts:
+                if part.startswith('default='):
+                    default_value = part.split('=', 1)[1].strip('"').strip("'") 
+                    break
+
+            if default_value:
+                if self._validate_type(default_value, column_type):
+                    field_definition["default"] = default_value
+                else:
+                    determined_type = type(default_value).__name__
+                    raise TypeError(
+                        f"La valeur par défaut '{default_value}' (Type Python: {determined_type}) "
+                        f"n'est pas valide pour le type de colonne déclaré: '{column_type}'."
+                    )
+
+            if is_required:
+                if default_value:
+                    field_definition["required"] = True
+                else:
+                    raise TypeError(
+                        f"Les conditions 'notnull' doit avoir un valeur par defaut"
+                    )
+            elif is_pk:
+                field_definition["required"] = True
+
+            new_fields.append(field_definition)
+
+
+        if flag:
+            tmp_schemas = self.schemas
+            tmp_db = self.CURRENT_DB
+
+            self.CURRENT_DB = self.DB_SYSTEM
+            self.schemas = self.schemas_system
+
+            self.insert_data("serials", [f":{table_name}:2"], True)
+
+            self.CURRENT_DB = tmp_db
+            self.schemas = tmp_schemas
 
 
 

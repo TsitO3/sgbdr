@@ -126,6 +126,25 @@ def execute_command(action: str, args: list[str]) -> bool:
             else:
                     print("Erreur: Aucune base de données sélectionnée.")
 
+        elif action == "ALTER" and :
+            if db_core.CURRENT_DB:
+                if PERMISSION["u"]:
+                    if len(args) == 4 and args[1].upper() == "SET" and args[3].upper() == "ALL":
+                        table_name = args[0]
+                        new_value = args[2]
+                        db_core.update_data(table_name, new_value, "")
+                    elif len(args) >= 4 and args[1].upper() == "SET" and args[3].upper() == "WHERE":
+                        table_name = args[0]
+                        new_value = args[2]
+                        condition = args[4:]
+                        db_core.update_data(table_name, new_value, condition)
+                    else:
+                        print("Errreur de synthaxe : DELETE * FROM <TABLE> or DELETE FROM <TABLE> WHERE <CONDITION>")
+                else:
+                    print("Permission non accordé.")
+            else:
+                    print("Erreur: Aucune base de données sélectionnée.")
+
         
         elif action == "GRANT":
             if len(args) == 5 and args[1].upper() == "ON" and args[3].upper() == "TO":
@@ -213,6 +232,8 @@ def execute_command(action: str, args: list[str]) -> bool:
                     db_core.show_tables()        
             else:
                 print(f" Erreur de synthaxe : SHOW TABLES/DATABASES")
+
+        
 
 
         elif action == "SU" and len(args) == 1:
